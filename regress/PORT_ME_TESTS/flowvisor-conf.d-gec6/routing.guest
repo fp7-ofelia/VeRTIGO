@@ -1,0 +1,20 @@
+Name: routing
+ID: 1
+# tcp:PRIMARY_controller,BACKUP_controller
+#Host: tcp:openflowvisor.stanford.edu:6635,openflow1.stanford.edu:6635
+Host: tcp:localhost:6635
+
+# By default, with now "FlowSpace" param, this slice has
+# permissions to affect all traffic
+FlowSpace: deny: tp_src: 10001
+FlowSpace: deny: tp_dst: 10001
+FlowSpace: deny: tp_src: 10002
+FlowSpace: deny: tp_dst: 10002
+FlowSpace: deny: tp_src: 10003
+FlowSpace: deny: tp_dst: 10003
+FlowSpace: deny: tp_src: 10004
+FlowSpace: deny: tp_dst: 10004
+FlowSpace: deny: tp_src: 10005
+FlowSpace: deny: tp_dst: 10005
+# limit 10000 == at most 10000 packet_in's per second == infinity
+FlowSpace: allow:	limit: 10000

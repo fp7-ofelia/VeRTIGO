@@ -1,0 +1,8 @@
+Name: aggrMgr
+ID: 2
+# tcp:PRIMARY_controller,BACKUP_controller
+Host: tcp:localhost:6634
+
+# By default, with now "FlowSpace" param, this slice has
+# permissions to affect all traffic
+FlowSpace: readonly: limit: 10000

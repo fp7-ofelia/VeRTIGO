@@ -1,0 +1,9 @@
+Id: 10001
+Host: tcp:openflow8.stanford.edu:10001
+AllowedPorts: 0,1,2,3  netfpga-I2-ny
+AllowedPorts: 0,1,2,3  netfpga-I2-la
+AllowedPorts: 0,1,2,3  netfpga-I2-hou
+AllowedPorts: none default
+
+FlowSpace: allow: tp_src: 10001 limit: 10000
+FlowSpace: allow: tp_dst: 10001 limit: 10000

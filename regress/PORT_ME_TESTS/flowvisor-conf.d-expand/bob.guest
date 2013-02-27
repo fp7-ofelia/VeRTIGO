@@ -1,0 +1,20 @@
+id: 666
+Host: tcp:localhost:54322
+
+# ignore port 0 and 1 to prevent loop
+AllowedPorts: 0,3-13 switch1
+
+
+
+FlowSpace: allow: dl_dst: 00:18:E7:16:B4:C2
+FlowSpace: allow: dl_dst: 00:0D:B9:16:EF:94
+FlowSpace: allow: dl_dst: 00:0D:B9:16:EF:C8
+FlowSpace: allow: dl_dst: 00:0C:42:02:63:DF
+FlowSpace: allow: dl_dst: 00:0C:42:02:63:E1
+FlowSpace: allow: dl_dst: 00:0C:42:02:63:E2
+FlowSpace: allow: dl_src: 00:18:E7:16:B4:C2
+FlowSpace: allow: dl_src: 00:0D:B9:16:EF:94
+FlowSpace: allow: dl_src: 00:0D:B9:16:EF:C8
+FlowSpace: allow: dl_src: 00:0C:42:02:63:DF
+FlowSpace: allow: dl_src: 00:0C:42:02:63:E1
+FlowSpace: allow: dl_src: 00:0C:42:02:63:E2

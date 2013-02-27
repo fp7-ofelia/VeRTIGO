@@ -1,0 +1,6 @@
+[0]  DPID (All), Prio: 32000, Match: in_port:0,dl_src:00:00:00:00:00:02
+[1]  DPID (All), Prio: 32000, Match: in_port:0,dl_src:00:01:00:00:00:02
+[2]  DPID (All), Prio: 32000, Match: in_port:2,dl_src:00:00:00:00:00:02
+[3]  DPID (All), Prio: 32000, Match: in_port:2,dl_src:00:01:00:00:00:02
+[4]  DPID (All), Prio: 32000, Match: in_port:3,dl_src:00:00:00:00:00:02
+[5]  DPID (All), Prio: 32000, Match: in_port:3,dl_src:00:01:00:00:00:02

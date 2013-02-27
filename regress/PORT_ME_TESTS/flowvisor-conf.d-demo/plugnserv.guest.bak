@@ -1,0 +1,55 @@
+Id: 4
+Host: tcp:openflow4.stanford.edu:8833
+
+#Router
+Flowspace: allow: dl_src: 00:30:48:B0:54:AB
+Flowspace: allow: dl_dst: 00:30:48:B0:54:AB
+FlowSpace: allow: ip_src: 10.79.1.20
+FlowSpace: allow: ip_dst: 10.79.1.20
+#Bacteria
+Flowspace: allow: dl_src: 00:15:17:AF:FB:88
+Flowspace: allow: dl_dst: 00:15:17:AF:FB:88
+Flowspace: allow: dl_src: 00:15:17:AF:FB:89
+Flowspace: allow: dl_dst: 00:15:17:AF:FB:89
+FlowSpace: allow: ip_src: 10.79.1.21
+FlowSpace: allow: ip_dst: 10.79.1.21
+#Dogmatix
+Flowspace: allow: dl_src: 00:15:17:B0:04:B0
+Flowspace: allow: dl_dst: 00:15:17:B0:04:B0
+Flowspace: allow: dl_src: 00:15:17:B0:04:B1
+Flowspace: allow: dl_dst: 00:15:17:B0:04:B1
+FlowSpace: allow: ip_src: 10.79.1.22
+FlowSpace: allow: ip_dst: 10.79.1.22
+#Getafix
+Flowspace: allow: dl_src: 00:15:17:AF:F6:E6
+Flowspace: allow: dl_dst: 00:15:17:AF:F6:E6
+Flowspace: allow: dl_src: 00:15:17:AF:F6:E7
+Flowspace: allow: dl_dst: 00:15:17:AF:F6:E7
+FlowSpace: allow: ip_src: 10.79.1.23
+FlowSpace: allow: ip_dst: 10.79.1.23
+#Homeopatix
+Flowspace: allow: dl_src: 00:15:17:AF:FA:9E
+Flowspace: allow: dl_dst: 00:15:17:AF:FA:9E
+Flowspace: allow: dl_src: 00:15:17:AF:FA:9F
+Flowspace: allow: dl_dst: 00:15:17:AF:FA:9F
+FlowSpace: allow: ip_src: 10.79.1.24
+FlowSpace: allow: ip_dst: 10.79.1.24
+#Asterix
+Flowspace: allow: dl_src: 00:30:48:B1:37:DD
+Flowspace: allow: dl_dst: 00:30:48:B1:37:DD
+FlowSpace: allow: ip_src: 10.79.1.25
+FlowSpace: allow: ip_dst: 10.79.1.25
+#Obelix
+Flowspace: allow: dl_src: 00:30:48:B1:35:CF
+Flowspace: allow: dl_dst: 00:30:48:B1:35:CF
+FlowSpace: allow: ip_src: 10.79.1.26
+FlowSpace: allow: ip_dst: 10.79.1.26
+#spares...
+FlowSpace: allow: ip_src: 10.79.1.27
+FlowSpace: allow: ip_dst: 10.79.1.27
+FlowSpace: allow: ip_src: 10.79.1.28
+FlowSpace: allow: ip_dst: 10.79.1.28
+FlowSpace: allow: ip_src: 10.79.1.29
+FlowSpace: allow: ip_dst: 10.79.1.29
+FlowSpace: allow: ip_src: 10.79.1.30
+FlowSpace: allow: ip_dst: 10.79.1.30

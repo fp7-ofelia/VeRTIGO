@@ -1,0 +1,26 @@
+Id: 3
+
+AllowedPorts: none ap1
+AllowedPorts: none ap2
+AllowedPorts: none necsw
+AllowedPorts: none necsw2
+AllowedPorts: none necsw3
+AllowedPorts: none necsw4a
+AllowedPorts: none necsw4b
+AllowedPorts: none gates-sw-3-3
+AllowedPorts: none nfcm14
+AllowedPorts: none nfcm15
+AllowedPorts: none nfcm16
+AllowedPorts: none nfcm17
+AllowedPorts: none nfcm18
+
+
+Host: tcp:localhost:54321
+FlowSpace: allow: dl_dst: 00:ff:00:00:00:00
+FlowSpace: allow: dl_dst: 00:ff:00:00:00:01
+FlowSpace: allow: dl_dst: 00:ff:00:00:00:02
+FlowSpace: allow: dl_dst: 00:ff:00:00:00:03
+FlowSpace: allow: dl_dst: 00:ff:00:00:00:04
+FlowSpace: allow: dl_dst: 00:ff:00:00:00:05
+FlowSpace: allow: dl_dst: 00:00:0c:00:00:11
+FlowSpace: allow: dl_dst: 00:18:8b:27:00:01

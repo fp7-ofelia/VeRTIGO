@@ -1,0 +1,25 @@
+ID: 3
+#Host: noxtrial.stanford.edu
+Host: tcp:localhost:54321
+
+
+# Give control over all dhcp traffic
+#       i.e., proto=udp (17) and port = 67
+# we could be more explicit and restrict to
+#       ip_dst= 255.255.255.255
+#       and ip_src = 0.0.0.0, but why?
+FlowSpace: allow: ip_proto: 17 port_dst: 67
+
+# Give control of all arp "broadcasts"
+#       arp = ether_type: 0x0806 == 326
+FlowSpace: allow: dl_type: 326
+
+# but not mvm-client2 (laptop)
+#NEC Laptop
+FlowSpace: deny: dl_dst: 00:1c:f0:ed:98:5a
+#Nikhil's mac
+FlowSpace: deny: dl_dst: 00:22:41:fa:73:15
+
+
+# Experimental!  does "allow:" work without options?
+FlowSpace: allow:

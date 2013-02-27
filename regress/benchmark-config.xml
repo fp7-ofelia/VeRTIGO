@@ -1,0 +1,416 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<java version="1.6.0_20" class="java.beans.XMLDecoder"> 
+ <object class="org.flowvisor.config.ConfDirEntry"> 
+  <void property="entries"> 
+   <object class="java.util.HashMap"> 
+    <void method="put"> 
+     <string>flowvisor</string> 
+     <object class="org.flowvisor.config.ConfDirEntry"> 
+      <void property="entries"> 
+       <object class="java.util.HashMap"> 
+        <void method="put"> 
+         <string>api_webserver_port</string> 
+         <object class="org.flowvisor.config.ConfIntEntry"> 
+          <void property="int"> 
+           <int>8080</int> 
+          </void> 
+          <void property="name"> 
+           <string>api_webserver_port</string> 
+          </void> 
+          <void property="persistent"> 
+           <boolean>true</boolean> 
+          </void> 
+         </object> 
+        </void> 
+        <void method="put"> 
+         <string>log_ident</string> 
+         <object class="org.flowvisor.config.ConfStrEntry"> 
+          <void property="name"> 
+           <string>log_ident</string> 
+          </void> 
+          <void property="persistent"> 
+           <boolean>true</boolean> 
+          </void> 
+          <void property="string"> 
+           <string>flowvisor</string> 
+          </void> 
+         </object> 
+        </void> 
+        <void method="put"> 
+         <string>checkpointing</string> 
+         <object class="org.flowvisor.config.ConfBoolEntry"> 
+          <void property="bool"> 
+           <boolean>true</boolean> 
+          </void> 
+          <void property="name"> 
+           <string>checkpointing</string> 
+          </void> 
+          <void property="persistent"> 
+           <boolean>true</boolean> 
+          </void> 
+         </object> 
+        </void> 
+        <void method="put"> 
+         <string>listen_port</string> 
+         <object class="org.flowvisor.config.ConfIntEntry"> 
+          <void property="int"> 
+           <int>16633</int> 
+          </void> 
+          <void property="name"> 
+           <string>listen_port</string> 
+          </void> 
+          <void property="persistent"> 
+           <boolean>true</boolean> 
+          </void> 
+         </object> 
+        </void> 
+        <void method="put"> 
+         <string>logging</string> 
+         <object class="org.flowvisor.config.ConfStrEntry"> 
+          <void property="name"> 
+           <string>logging</string> 
+          </void> 
+          <void property="persistent"> 
+           <boolean>true</boolean> 
+          </void> 
+          <void property="string"> 
+           <string>INFO</string> 
+          </void> 
+         </object> 
+        </void> 
+        <void method="put"> 
+         <string>run_topology_server</string> 
+         <object class="org.flowvisor.config.ConfBoolEntry"> 
+          <void property="bool"> 
+           <boolean>false</boolean> 
+          </void> 
+          <void property="name"> 
+           <string>run_topology_server</string> 
+          </void> 
+          <void property="persistent"> 
+           <boolean>true</boolean> 
+          </void> 
+         </object> 
+        </void> 
+        <void method="put"> 
+         <string>log_facility</string> 
+         <object class="org.flowvisor.config.ConfStrEntry"> 
+          <void property="name"> 
+           <string>log_facility</string> 
+          </void> 
+          <void property="persistent"> 
+           <boolean>true</boolean> 
+          </void> 
+          <void property="string"> 
+           <string>LOG_LOCAL7</string> 
+          </void> 
+         </object> 
+        </void> 
+       </object> 
+      </void> 
+      <void property="name"> 
+       <string>flowvisor</string> 
+      </void> 
+      <void property="persistent"> 
+       <boolean>true</boolean> 
+      </void> 
+     </object> 
+    </void> 
+    <void method="put"> 
+     <string>switches</string> 
+     <object class="org.flowvisor.config.ConfDirEntry"> 
+      <void property="entries"> 
+       <object class="java.util.HashMap"/> 
+      </void> 
+      <void property="name"> 
+       <string>switches</string> 
+      </void> 
+      <void property="persistent"> 
+       <boolean>true</boolean> 
+      </void> 
+     </object> 
+    </void> 
+    <void method="put"> 
+     <string>flowspace</string> 
+     <object class="org.flowvisor.config.ConfFlowMapEntry"> 
+      <void property="flowMap"> 
+       <object class="org.flowvisor.flows.LinearFlowMap"> 
+        <void property="rules"> 
+         <void method="add"> 
+          <object class="org.flowvisor.flows.FlowEntry"> 
+           <void property="DPID"> 
+            <long>-9223372036854775808</long> 
+           </void> 
+           <void property="actionsList"> 
+            <object class="java.util.LinkedList"> 
+             <void method="add"> 
+              <object class="org.flowvisor.flows.SliceAction"> 
+               <void property="sliceName"> 
+                <string>all</string> 
+               </void> 
+               <void property="slicePerms"> 
+                <int>4</int> 
+               </void> 
+               <void property="vendor"> 
+                <int>-2147483647</int> 
+               </void> 
+              </object> 
+             </void> 
+            </object> 
+           </void> 
+           <void property="priority"> 
+            <int>1000</int> 
+           </void> 
+           <void property="ruleMatch"> 
+            <object class="org.openflow.protocol.OFMatch"/> 
+           </void> 
+          </object> 
+         </void> 
+        </void> 
+       </object> 
+      </void> 
+      <void property="name"> 
+       <string>flowspace</string> 
+      </void> 
+      <void property="persistent"> 
+       <boolean>true</boolean> 
+      </void> 
+     </object> 
+    </void> 
+    <void method="put"> 
+     <string>slices</string> 
+     <object class="org.flowvisor.config.ConfDirEntry"> 
+      <void property="entries"> 
+       <object class="java.util.HashMap"> 
+        <void method="put"> 
+         <string>root</string> 
+         <object class="org.flowvisor.config.ConfDirEntry"> 
+          <void property="entries"> 
+           <object class="java.util.HashMap"> 
+            <void method="put"> 
+             <string>passwd_salt</string> 
+             <object class="org.flowvisor.config.ConfStrEntry"> 
+              <void property="name"> 
+               <string>passwd_salt</string> 
+              </void> 
+              <void property="persistent"> 
+               <boolean>true</boolean> 
+              </void> 
+              <void property="string"> 
+               <string>-1082716916</string> 
+              </void> 
+             </object> 
+            </void> 
+            <void method="put"> 
+             <string>contact_email</string> 
+             <object class="org.flowvisor.config.ConfStrEntry"> 
+              <void property="name"> 
+               <string>contact_email</string> 
+              </void> 
+              <void property="persistent"> 
+               <boolean>true</boolean> 
+              </void> 
+              <void property="string"> 
+               <string>root@localhost</string> 
+              </void> 
+             </object> 
+            </void> 
+            <void method="put"> 
+             <string>controller_hostname</string> 
+             <object class="org.flowvisor.config.ConfStrEntry"> 
+              <void property="name"> 
+               <string>controller_hostname</string> 
+              </void> 
+              <void property="persistent"> 
+               <boolean>true</boolean> 
+              </void> 
+              <void property="string"> 
+               <string>localhost</string> 
+              </void> 
+             </object> 
+            </void> 
+            <void method="put"> 
+             <string>controller_port</string> 
+             <object class="org.flowvisor.config.ConfIntEntry"> 
+              <void property="int"> 
+               <int>59054</int> 
+              </void> 
+              <void property="name"> 
+               <string>controller_port</string> 
+              </void> 
+              <void property="persistent"> 
+               <boolean>true</boolean> 
+              </void> 
+             </object> 
+            </void> 
+            <void method="put"> 
+             <string>passwd_crypt</string> 
+             <object class="org.flowvisor.config.ConfStrEntry"> 
+              <void property="name"> 
+               <string>passwd_crypt</string> 
+              </void> 
+              <void property="persistent"> 
+               <boolean>true</boolean> 
+              </void> 
+              <void property="string"> 
+               <string>714bb5fe14f1b0e3f4e73fc1dae41d86</string> 
+              </void> 
+             </object> 
+            </void> 
+            <void method="put"> 
+             <string>creator</string> 
+             <object class="org.flowvisor.config.ConfStrEntry"> 
+              <void property="name"> 
+               <string>creator</string> 
+              </void> 
+              <void property="persistent"> 
+               <boolean>true</boolean> 
+              </void> 
+              <void property="string"> 
+               <string>root</string> 
+              </void> 
+             </object> 
+            </void> 
+           </object> 
+          </void> 
+          <void property="name"> 
+           <string>root</string> 
+          </void> 
+          <void property="persistent"> 
+           <boolean>true</boolean> 
+          </void> 
+         </object> 
+        </void> 
+        <void method="put"> 
+         <string>all</string> 
+         <object class="org.flowvisor.config.ConfDirEntry"> 
+          <void property="entries"> 
+           <object class="java.util.HashMap"> 
+            <void method="put"> 
+             <string>passwd_salt</string> 
+             <object class="org.flowvisor.config.ConfStrEntry"> 
+              <void property="name"> 
+               <string>passwd_salt</string> 
+              </void> 
+              <void property="persistent"> 
+               <boolean>true</boolean> 
+              </void> 
+              <void property="string"> 
+               <string>-235231125</string> 
+              </void> 
+             </object> 
+            </void> 
+            <void method="put"> 
+             <string>contact_email</string> 
+             <object class="org.flowvisor.config.ConfStrEntry"> 
+              <void property="name"> 
+               <string>contact_email</string> 
+              </void> 
+              <void property="persistent"> 
+               <boolean>true</boolean> 
+              </void> 
+              <void property="string"> 
+               <string>capveg@cs.umd.edu</string> 
+              </void> 
+             </object> 
+            </void> 
+            <void method="put"> 
+             <string>controller_port</string> 
+             <object class="org.flowvisor.config.ConfIntEntry"> 
+              <void property="int"> 
+               <int>54320</int> 
+              </void> 
+              <void property="name"> 
+               <string>controller_port</string> 
+              </void> 
+              <void property="persistent"> 
+               <boolean>true</boolean> 
+              </void> 
+             </object> 
+            </void> 
+            <void method="put"> 
+             <string>controller_hostname</string> 
+             <object class="org.flowvisor.config.ConfStrEntry"> 
+              <void property="name"> 
+               <string>controller_hostname</string> 
+              </void> 
+              <void property="persistent"> 
+               <boolean>true</boolean> 
+              </void> 
+              <void property="string"> 
+               <string>localhost</string> 
+              </void> 
+             </object> 
+            </void> 
+            <void method="put"> 
+             <string>passwd_crypt</string> 
+             <object class="org.flowvisor.config.ConfStrEntry"> 
+              <void property="name"> 
+               <string>passwd_crypt</string> 
+              </void> 
+              <void property="persistent"> 
+               <boolean>true</boolean> 
+              </void> 
+              <void property="string"> 
+               <string>8e2a56d49ad526f42db7ee23fb771785</string> 
+              </void> 
+             </object> 
+            </void> 
+            <void method="put"> 
+             <string>creator</string> 
+             <object class="org.flowvisor.config.ConfStrEntry"> 
+              <void property="name"> 
+               <string>creator</string> 
+              </void> 
+              <void property="persistent"> 
+               <boolean>true</boolean> 
+              </void> 
+              <void property="string"> 
+               <string>root</string> 
+              </void> 
+             </object> 
+            </void> 
+           </object> 
+          </void> 
+          <void property="name"> 
+           <string>all</string> 
+          </void> 
+          <void property="persistent"> 
+           <boolean>true</boolean> 
+          </void> 
+         </object> 
+        </void> 
+       </object> 
+      </void> 
+      <void property="name"> 
+       <string>slices</string> 
+      </void> 
+      <void property="persistent"> 
+       <boolean>true</boolean> 
+      </void> 
+     </object> 
+    </void> 
+    <void method="put"> 
+     <string>version</string> 
+     <object class="org.flowvisor.config.ConfStrEntry"> 
+      <void property="name"> 
+       <string>version</string> 
+      </void> 
+      <void property="persistent"> 
+       <boolean>true</boolean> 
+      </void> 
+      <void property="string"> 
+       <string>flowvisor-0.6.4</string> 
+      </void> 
+     </object> 
+    </void> 
+   </object> 
+  </void> 
+  <void property="name"> 
+   <string></string> 
+  </void> 
+  <void property="persistent"> 
+   <boolean>true</boolean> 
+  </void> 
+ </object> 
+</java> 

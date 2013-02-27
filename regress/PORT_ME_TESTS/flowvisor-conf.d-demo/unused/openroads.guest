@@ -1,0 +1,30 @@
+Id: 333
+Host: tcp:openflow3.stanford.edu:6633
+
+# ignore port 0 and 1 to prevent loop
+AllowedPorts: 0,3-13 necsw4a
+
+# ignore port 1 to prevent loop
+AllowedPorts: 0,2-3 necsw4b
+
+# ignore port 2,5 to prevent loop
+AllowedPorts: 0,2-4,6-24 necsw
+
+# ignore 0,4
+AllowedPorts: 1-3 necsw3
+
+# ignore 25
+AllowedPorts: 0-24,26-48 gates-sw-3-3
+
+# ignore all of the netfpga machines
+AllowedPorts: none nec1
+AllowedPorts: none nfcm14
+AllowedPorts: none nfcm15
+AllowedPorts: none nfcm16
+AllowedPorts: none nfcm17
+AllowedPorts: none nfcm18
+
+FlowSpace: allow: dl_dst: 00:1c:f0:ed:98:5a
+FlowSpace: readonly: dl_src: 00:1c:f0:ed:98:5a
+
+

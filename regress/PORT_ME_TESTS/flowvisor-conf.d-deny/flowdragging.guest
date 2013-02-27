@@ -1,0 +1,8 @@
+Id: 2
+Host: tcp:localhost:54321
+
+
+FlowSpace: readonly: dl_src: 00:16:cb:ac:1e:0e
+FlowSpace: readonly: dl_dst: 00:16:cb:ac:1e:0e
+FlowSpace: allow: ip_src: 10.79.1.113 ip_proto: 1
+FlowSpace: allow: ip_dst: 10.79.1.113 ip_proto: 1

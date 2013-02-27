@@ -1,0 +1,20 @@
+A really simple wrapper around openlog(3) and syslog(3), because:
+
+1) syslog is really useful and admin friendly
+2) java does not implement syslog in it's native libraries
+    (because it's non-portable)
+3) java does not support unix sockets by default (!!)
+    so, I can't write this natively in java for linkx
+4) all of the 3rd party stuff I've found doesn't work 
+    on linux unless the admin enables INET sockets for
+    syslog, which I think they are unlikely to do
+
+COMPILING:
+
+builds cleanly under linux, but other OS's will need different compile and linking options.  As a temporary work around, you can define you own CFLAGS and LDFLAGS on the command line, e.g., 
+
+make CFLAGS="-I/path/to/java/include -g" LDFLAGS="-g"
+
+
+TODO: 
+    move to configure/libtool if people are going to use this on non-linux systems

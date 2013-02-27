@@ -1,0 +1,6 @@
+libsyslog_jni.so
+org_flowvisor_log_Syslog.h
+org_flowvisor_log_Syslog_Facility.h
+org_flowvisor_log_Syslog_Priority.h
+syslog_jni.o
+

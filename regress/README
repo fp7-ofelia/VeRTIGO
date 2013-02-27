@@ -1,0 +1,20 @@
+Using FlowVisor's Test Suite:
+-------------------------------------------------------------------------
+FlowVisor ships with its own regression test suite:
+
+To us it, run `./tests.sh` out of this directory after you've built
+	the FlowVisor.   IF you run ./tests.sh with an extra arg, it will
+	pause after the FlowVisor starts, but before the tests start.
+	This is very useful when you would like to run flowvisor through
+    the debugger
+
+NOTES:
+1) The above script runs all tests.  Individual tests can be run as
+	`./tests-$type.py`
+2) By default, each test starts up it's own flowvisor instance.  Each
+    test can take a port as an optional parameter to use an already 
+    running FlowVisor, i.e., for debugging
+    ./tests-base.py 6633
+3) By default, FlowVisor starts up on port 16633 and API server on 18080
+4) FlowVisor by defaults zeros pad varriables where nox does not,
+    so this can cause issues with exact string matches

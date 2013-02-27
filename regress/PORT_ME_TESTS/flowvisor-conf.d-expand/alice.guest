@@ -1,0 +1,30 @@
+Name: alice
+ID: 1
+Host: tcp:localhost:54321
+AllowedPorts: 0,2-3	switch1
+FlowSpace: allow: dl_src: 00:00:00:00:00:02
+FlowSpace: allow: dl_src: 00:01:00:00:00:02
+FlowSpace: allow: dl_src: 00:02:00:00:00:02
+FlowSpace: allow: dl_src: 00:03:00:00:00:02
+FlowSpace: allow: dl_src: 00:04:00:00:00:02
+FlowSpace: allow: dl_src: 00:05:00:00:00:02
+FlowSpace: allow: dl_src: 00:06:00:00:00:02
+FlowSpace: allow: dl_src: 00:07:00:00:00:02
+FlowSpace: allow: dl_src: 00:08:00:00:00:02
+FlowSpace: allow: dl_src: 00:09:00:00:00:02
+FlowSpace: allow: dl_src: 00:10:00:00:00:02
+FlowSpace: allow: dl_src: 00:11:00:00:00:02
+FlowSpace: allow: dl_src: 00:12:00:00:00:02
+FlowSpace: allow: dl_dst: 00:00:00:00:00:02
+FlowSpace: allow: dl_dst: 00:01:00:00:00:02
+FlowSpace: allow: dl_dst: 00:02:00:00:00:02
+FlowSpace: allow: dl_dst: 00:03:00:00:00:02
+FlowSpace: allow: dl_dst: 00:04:00:00:00:02
+FlowSpace: allow: dl_dst: 00:05:00:00:00:02
+FlowSpace: allow: dl_dst: 00:06:00:00:00:02
+FlowSpace: allow: dl_dst: 00:07:00:00:00:02
+FlowSpace: allow: dl_dst: 00:08:00:00:00:02
+FlowSpace: allow: dl_dst: 00:09:00:00:00:02
+FlowSpace: allow: dl_dst: 00:10:00:00:00:02
+FlowSpace: allow: dl_dst: 00:11:00:00:00:02
+FlowSpace: allow: dl_dst: 00:12:00:00:00:02

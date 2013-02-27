@@ -1,0 +1,21 @@
+# All switch definitions files match *.switch
+# This is a comment: whitespace only lines are ignored
+
+
+# DataPathID: ID
+#	REQUIRED
+# 	the 8 byte data path ID that the switch gives us; we trust switches to
+#	correctly identify themselves via ofp_switch_features
+#	for network identification
+DataPathID: 00:00:00:00:00:00:00:01
+
+
+# Name: string
+#	REQUIRED
+# 	a human readable string to idenfity the switch
+Name: switch1
+
+# ID: int
+#	REQUIRED
+# 	a machine readable id to idenfity the switch internally
+ID:	0

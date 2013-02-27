@@ -1,0 +1,10 @@
+ID: 4
+#Host: openflow2.stanford.edu
+#Port: 6650
+Host: tcp:localhost:54322
+
+
+# all stuff to mvm-client2 (laptop) is handled by mvm-client2's controller
+FlowSpace: allow: dl_dst: 00:21:5c:54:a6:a1 
+#NEC Laptop
+FlowSpace: allow: dl_dst: 00:1c:f0:ed:98:5a 

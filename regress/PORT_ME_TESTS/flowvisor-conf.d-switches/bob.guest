@@ -1,0 +1,5 @@
+Name: bob
+Id: 2
+Host: tcp:localhost:54322
+AllowedPorts: 1,3	switch2
+# implicitly allow all ports on switch1

@@ -1,0 +1,6 @@
+ID: 5
+Vlan: 4000
+VlanPcp: 5
+BandwidthSlice: 7
+Host: tcp:localhost:54325
+FlowSpace: allow:

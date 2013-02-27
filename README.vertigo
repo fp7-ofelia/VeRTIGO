@@ -1,0 +1,123 @@
+INTRODUCTION
+
+The main purpose of VeRTIGO is to enable the instantiation of generalized
+Virtual Topologies (VT) including virtual links and virtual ports. In particular
+VeRTIGO introduces over FlowVisor additional intelligence able to expose
+different virtual views of the network to different controllers. This is
+achieved by remapping some fields of messages coming from the network and
+directed to the controllers (and vice-versa) and by directly replying to those
+switches that are intermediate points of virtual links and that
+must be hidden to the controller of the VT. 
+The two processes both depend on the VT configuration and in particular on the
+configuration of Virtual Links instantiated within the VT.
+Beside Virtual Links, we have also introduced the concept of Virtual Ports with
+purpose of supporting the instantiation of multiple Virtual Links on each
+physical link. Virtual Ports are simply Physical Ports with a virtual port
+numbers and are needed when a single physical port is the termination of
+multiple virtual links. In this situation, each OpenFlow message related to this
+physical port must be modified with virtual port numbers consistent with the
+instantiated virtual links before being forwarded to the controller.
+
+This document describes the VeRTIGO's internals and is intended for
+people looking to modify/develop the actual code.
+At the bottom there is also a short configuration HOWTO which describes the
+main steps to start using VeRTIGO.
+
+
+
+CODE LAYOUT:
+
+Most of the VeRTIGO's source code is grouped in separated packages added to the
+FlowVisor source code tree. The base package is 
+    
+    org.flowvisor.vtopology
+
+Most of functions of VeRTIGO are invoked from the FVSlicer as Virtual Topology
+configurations differ for each slice. 
+
+The code added for VeRTIGO is usually comprised within lines:
+
+// VERTIGO
+...
+// END VERTIGO
+
+
+
+VTConfigInterface: 	is the class which manages the configuration of the VTs
+			and is used by the other modules (like PortMapper and
+			LinkBroker) to correctly manage the virtual elements
+			included in the VT.
+VTSqlDb:		stores the configuration of virtual elements for each
+			virtual topology. It is also used to keep track of
+			flows crossing virtual links, i.e. it stores the
+			association between flow_matches and virtual link IDs. 
+			These entries are used to identify the virtual link 
+			crossed by a flow when the flow arrives to the next hop.
+VTPortMapper:		intercepts both messages from switches to controllers
+			(e.g. packet_in) and from controllers to switches (e.g.
+			stats requests) and rewrites the port numbers values. 
+VTLinkBroker:		generates and sends flow_mod and packet_out messages to 
+			those switches that are intermediate points of virtual
+			links and that must be hidden to the controllers.
+
+
+COMPILATION AND INSTALLATION
+	
+See the original FlowVisor procedure described within file INSTALL.
+
+NOTES ON INSTALLATION
+
+1. Scripts install-script.sh and envs.sh have been modified from the original
+FlowVisor version in order to support the additional libraries required by
+VeRTIGO, i.e. mysql-connector-java-5.1.15-bin.jar and hsqldb.jar (both in
+/lib/). 
+2. VeRTIGO needs a patched version of openflow.jar which has been added in
+/lib/ (see post at
+https://mailman.stanford.edu/pipermail/openflow-discuss/2012-February/002997.
+html)
+
+
+CONFIGURATION OF VERTIGO
+
+As for FlowVisor, the VeRTIGO configuration process starts with the generation 
+of the base configuration file through the command: 
+
+/usr/local/sbin/fvconfig generate config.xml
+
+The initial config file contains some sample VTs and flow definitions. These
+must be removed before VeRTIGO can be used. In order to make the required changes, 
+VeRTIGO must be running. Example invocation is:
+
+flowvisor config.xml 
+
+Then, give the following commands (deleting VTs implicitly deletes the rules 
+associated with them):
+
+fvctl deleteSlice alice
+fvctl deleteSlice bob
+
+You can now define a new VT called charlie that will catch all flows from all 
+switches with commands:
+
+fvctl createSlice charlie tcp:yourhost.com:10001 slice-email@yourhost.com
+fvctl addFlowSpace any 10 any "Slice:charlie=4"
+
+As anticipated in Section , we have modified the fvctl script by adding some 
+additional options that can be used to define and instantiate Virtual Links. 
+
+For instance, the instantiation of a Virtual Link can be performed through
+command:
+
+./fvctl.sh addLink charlie 00:00:00:00:00:00:00:01/1-00:00:00:00:00:00:00:02/1,
+00:00:00:00:00:00:00:02/2-00:00:00:00:00:00:00:03/1
+
+
+Where charlie is the name of the VT and the couple 00:00:…:0X/Y represents the 
+datapath_id of a switch plus a physical port number. This command above creates
+ a direct connection (Virtual Link) between switches with datapath_id 
+ 00:00:00:00:00:00:00:01 and 00:00:00:00:00:00:00:03 passing through 
+ 00:00:00:00:00:00:00:02.
+
+
+
+

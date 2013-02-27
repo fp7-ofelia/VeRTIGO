@@ -1,0 +1,4 @@
+Id: 6
+max_messages_per_second: 2
+Host: tcp:localhost:54321
+FlowSpace: allow: ip_dst: 3.4.0.0/16 limit: 2

@@ -1,0 +1,5 @@
+Name: alice
+ID: 1
+Host: tcp:localhost:54321
+AllowedPorts: 0,2-3	switch1
+AllowedPorts: none default

@@ -1,0 +1,16 @@
+Name: mobilevms
+Id: 2
+Host: tcp:localhost:1975
+
+# ignore all of the netfpga machines
+AllowedPorts: none nec1
+AllowedPorts: none nfcm14
+AllowedPorts: none nfcm15
+AllowedPorts: none nfcm16
+AllowedPorts: none nfcm17
+AllowedPorts: none nfcm18
+AllowedPorts: none ap1
+
+
+FlowSpace: allow: dl_src: 00:16:cb:ac:1e:0e
+FlowSpace: allow: dl_dst: 00:16:cb:ac:1e:0e

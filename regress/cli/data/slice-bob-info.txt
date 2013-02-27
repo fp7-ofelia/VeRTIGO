@@ -1,0 +1,4 @@
+{'contact_email': 'bob@foo.com',
+ 'controller_hostname': 'localhost',
+ 'controller_port': '54322',
+ 'creator': 'root'}

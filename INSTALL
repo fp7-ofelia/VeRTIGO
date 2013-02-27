@@ -1,0 +1,38 @@
+REQUIREMENTS:
+    - ant           (no version requirements?)
+    - java 1.6	    (currently works with both Sun's JDK; 
+                     and OpenJDK)
+
+BUILD:
+    - run `make` (or `ant` : Makefile is just a wrapper)
+
+    if you have problems finding jni.h, use:
+	make CFLAGS=-I/path/to/javahome/include
+    or just install libgcj-devel (jni.h versions are similar). For
+    many linux systems, the following seems to be the right invocation:
+	make CFLAGS="-I/usr/lib/jvm/java-6-openjdk/include"
+
+INSTALL:
+    - make install
+
+    This puts scripts and jars into a specified $prefix
+
+CONFIG:
+    Build a default configuration with:
+    fvconfig generate <config.xml>
+
+    List the contents of the config.xml:
+    fvconfig dump <config.xml>
+
+    The best way to edit the config is to run flowvisor (below)
+    and use fvctl to to issue commands to the running flowvisor.
+
+RUN: 
+    To run flowvisor:
+        flowvisor config.xml
+
+        or link the /etc/init.d/flowvisor script into your 
+        systems startup.
+
+    To configure running flowvisor, use ./scripts/fvctl.sh
+        `man 1 fvctl` or `man ./doc/fvctl.1` for details

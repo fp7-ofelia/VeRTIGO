@@ -1,0 +1,110 @@
+#!/usr/bin/perl -w
+# Wrapper around the hypervisor and reference simple C controller (learning_switch)
+#	to show the hypervisor is a NOOP around the learning_switch
+#	for the reference implementation regression tests
+
+$DEBUG=1;
+
+
+sub clean_up
+{
+	if(defined($hpid))
+	{
+		print STDERR "Killing hypervisor($hpid)...\n" if($DEBUG);
+		kill TERM, $hpid;
+		$hpid=undef;
+	}
+	if(defined($cpid))
+	{
+		print STDERR "Killing real controller($cpid)...\n" if($DEBUG);
+		kill TERM, $cpid;
+		$cpid=undef;
+	}
+	exit(0);
+}
+
+$controller = &find_real_controller();
+$hypervisor = &find_hypervisor();
+
+# trap signals
+$SIG{INT}=\&clean_up;
+$SIG{TERM}=\&clean_up;
+$SIG{KILL}=\&clean_up;
+
+$cport=48493;
+$cpid = &spawn("$controller ptcp:$cport");
+# read the cmdline args
+@args=@ARGV;
+unshift @args, $hypervisor, "-v", "-p", "trivial" ;	# add to front
+#push @args, "guests", "tcp:localhost:$cport", ">", "hypervisor.$$.log", "2>&1", ;	# add to end
+push @args, "guests", "tcp:localhost:$cport";	# add to end
+$hpid = &spawn(@args);
+print STDERR "Waiting for hypervisor or controller to finish\n" if($DEBUG);
+$pid=wait();
+if($pid == $hpid)
+{
+	$hpid=undef;
+}
+elsif($pid == $cpid)
+{
+	$cpid=undef;
+
+}
+&clean_up();	#kill off anything that needs killing
+
+#### End main()
+
+
+
+sub find_real_controller	# find the 2nd "controller" in the path
+{
+	$count=0;
+	foreach $p (split /:/, $ENV{'PATH'})
+	{
+		$controller="$p/controller";
+		if(-x $controller)
+		{
+			$count++;
+			if($count>1)
+			{
+				return $controller;
+			}
+		}
+	}
+	die "Could not find a second \"controller\" in path: found $count\n";
+}
+
+sub find_hypervisor
+{
+	my ($hypervisor,$h);
+	$hypervisor=undef;
+	foreach $p (split /:/, $ENV{'PATH'})
+	{
+		$h="$p/hypervisor";
+		if(-x $h)
+		{
+			$hypervisor=$h;
+		}
+	}
+	return $hypervisor if($hypervisor);
+	$h="../../hypervisor";	# last ditch effort
+	return $h if(-x $h);
+	$h="$ENV{'HOME'}/git/hypervisor/hypervisor";	# laster ditch effort
+	return $h if(-x $h);
+	die "Could not find hypervisor anywhere...";
+}
+
+sub spawn {
+	my ($cmd,$pid);
+	$cmd = join " ", @_;
+	if(($pid=fork())!=0)
+	{
+		return $pid;
+	}
+	else
+	{
+		print STDERR "Spawning '$cmd'\n" if($DEBUG);
+		exec(@_) or die "Spawning(failed!) '$cmd'\n: $!";
+		exit(0);
+	}
+}

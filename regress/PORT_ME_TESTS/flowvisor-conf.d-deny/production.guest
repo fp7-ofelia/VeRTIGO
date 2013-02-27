@@ -1,0 +1,69 @@
+id: 666
+Host: tcp:localhost:54322
+
+
+#FlowSpace: readonly:
+# wireless laptop #1 ath0
+
+##FlowSpace: readonly: ip_proto: 17 tp_src: 1213
+#FlowSpace: readonly: ip_proto: 17 tp_dst: 1213
+#FlowSpace: allow: dl_dst: 00:1c:f0:ed:98:5a
+#FlowSpace: allow: dl_src: 00:1c:f0:ed:98:5a
+#
+## Handover Client
+#FlowSpace: allow: dl_src: 00:1c:f0:ee:5a:d1
+#FlowSpace: allow: dl_dst: 00:1c:f0:ee:5a:d1
+#
+#FlowSpace: allow: dl_dst: 00:18:E7:16:B4:C2
+#FlowSpace: allow: dl_src: 00:18:E7:16:B4:C2
+#
+## AP1
+#FlowSpace: allow: dl_dst: 00:0D:B9:16:EF:94
+#FlowSpace: allow: dl_src: 00:0D:B9:16:EF:94
+#
+## AP2
+#FlowSpace: allow: dl_dst: 00:0D:B9:16:EF:C8
+#FlowSpace: allow: dl_src: 00:0D:B9:16:EF:C8
+#
+## AP3
+#FlowSpace: allow: dl_dst: 00:0d:b9:15:c0:44 
+#FlowSpace: allow: dl_src: 00:0d:b9:15:c0:44 
+#
+#
+## wireless laptop #1 wlan0
+#FlowSpace: allow: dl_dst: 00:22:fb:1a:9b:44
+#FlowSpace: allow: dl_src: 00:22:fb:1a:9b:44
+#
+## wireless laptop #2 wlan0
+#FlowSpace: allow: dl_dst: 00:22:fb:38:b7:70
+#FlowSpace: allow: dl_src: 00:22:fb:38:b7:70
+#
+## wireless laptop #3 wlan0
+#FlowSpace: allow: dl_dst: 00:22:fb:38:ce:e6
+#FlowSpace: allow: dl_src: 00:22:fb:38:ce:e6
+#
+## Default gateway (10.79.1.1)
+#FlowSpace: allow: dl_dst: 00:00:0c:07:ac:5a
+#FlowSpace: allow: dl_src: 00:00:0c:07:ac:5a
+#
+## other !#?!#!? Default gateway (10.79.1.2)
+#FlowSpace: allow: dl_dst: 00:d0:05:5d:24:00
+#FlowSpace: allow: dl_src: 00:d0:05:5d:24:00
+#
+## Streaming Server (pomi-pc2 eth1)
+#FlowSpace: allow: dl_dst: 00:0c:42:07:1a:39 
+#FlowSpace: allow: dl_src: 00:0c:42:07:1a:39 
+#
+#
+## ASN-GW public side (10.79.1.110)
+#FlowSpace: allow: dl_dst: 00:18:4D:72:13:DF
+#FlowSpace: allow: dl_src: 00:18:4D:72:13:DF
+#
+#
+# Mac Mini/Voip server
+FlowSpace: deny: ip_src: 10.79.1.131 ip_proto: 1
+FlowSpace: deny: ip_dst: 10.79.1.131 ip_proto: 1
+FlowSpace: allow: dl_src: 00:16:cb:ac:1e:0e
+FlowSpace: allow: dl_dst: 00:16:cb:ac:1e:0e
+
+#FlowSpace: readonly:

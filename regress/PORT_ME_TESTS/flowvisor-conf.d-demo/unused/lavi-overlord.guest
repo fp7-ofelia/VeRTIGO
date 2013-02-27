@@ -1,0 +1,4 @@
+Id: 1
+Host: tcp:localhost:6634
+FlowSpace: readonly:
+#FlowSpace: allow:

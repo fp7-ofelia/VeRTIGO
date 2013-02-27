@@ -1,0 +1,4 @@
+Name: alice
+ID: 1
+Host: tcp:localhost:54321
+FlowSpace: allow:

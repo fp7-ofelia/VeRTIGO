@@ -1,0 +1,11 @@
+This directory contains the data necessary to run the CLI unit tests.
+
+If you make changes to support new tests, please keep in mind that you need to
+regenerate ALL the data impacted - not just the one thing you're trying to test.
+For example, if you edit the flowspace for the "bob" slice, you will need to
+regenerate the following files:
+
+flowspace-all.txt
+flowspace-bob.txt
+flowspace-bob-ids.txt
+

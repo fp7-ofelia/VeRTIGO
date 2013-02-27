@@ -1,0 +1,41 @@
+!config_version::INT : 2
+!flowspace::FLOWMAP : 0 FlowEntry[dpid=[all_dpids],ruleMatch=[OFMatch[in_port=0,dl_src=00:00:00:00:00:02]],actionsList=[Slice:alice=4],id=[3],priority=[32000],]
+!flowspace::FLOWMAP : 1 FlowEntry[dpid=[all_dpids],ruleMatch=[OFMatch[in_port=0,dl_src=00:01:00:00:00:02]],actionsList=[Slice:alice=4],id=[5],priority=[32000],]
+!flowspace::FLOWMAP : 2 FlowEntry[dpid=[all_dpids],ruleMatch=[OFMatch[in_port=2,dl_src=00:00:00:00:00:02]],actionsList=[Slice:alice=4],id=[7],priority=[32000],]
+!flowspace::FLOWMAP : 3 FlowEntry[dpid=[all_dpids],ruleMatch=[OFMatch[in_port=2,dl_src=00:01:00:00:00:02]],actionsList=[Slice:alice=4],id=[9],priority=[32000],]
+!flowspace::FLOWMAP : 4 FlowEntry[dpid=[all_dpids],ruleMatch=[OFMatch[in_port=3,dl_src=00:00:00:00:00:02]],actionsList=[Slice:alice=4],id=[11],priority=[32000],]
+!flowspace::FLOWMAP : 5 FlowEntry[dpid=[all_dpids],ruleMatch=[OFMatch[in_port=3,dl_src=00:01:00:00:00:02]],actionsList=[Slice:alice=4],id=[13],priority=[32000],]
+!flowspace::FLOWMAP : 6 FlowEntry[dpid=[all_dpids],ruleMatch=[OFMatch[in_port=1,dl_src=00:00:00:00:00:01]],actionsList=[Slice:bob=4],id=[15],priority=[32000],]
+!flowspace::FLOWMAP : 7 FlowEntry[dpid=[all_dpids],ruleMatch=[OFMatch[in_port=1,dl_src=00:01:00:00:00:01]],actionsList=[Slice:bob=4],id=[17],priority=[32000],]
+!flowspace::FLOWMAP : 8 FlowEntry[dpid=[all_dpids],ruleMatch=[OFMatch[in_port=3,dl_src=00:00:00:00:00:01]],actionsList=[Slice:bob=4],id=[19],priority=[32000],]
+!flowspace::FLOWMAP : 9 FlowEntry[dpid=[all_dpids],ruleMatch=[OFMatch[in_port=3,dl_src=00:01:00:00:00:01]],actionsList=[Slice:bob=4],id=[21],priority=[32000],]
+!flowvisor!api_jetty_webserver_port::INT : -1
+!flowvisor!api_webserver_port::INT : 8080
+!flowvisor!checkpointing::BOOL : true
+!flowvisor!listen_port::INT : 6633
+!flowvisor!log_facility::STR : LOG_LOCAL7
+!flowvisor!logging::STR : NOTE
+!flowvisor!log_ident::STR : flowvisor
+!flowvisor!run_topology_server::BOOL : true
+!flowvisor!stats_desc_hack::BOOL : true
+!flowvisor!track_flows::BOOL : false
+!slices!alice!contact_email::STR : alice@foo.com
+!slices!alice!controller_hostname::STR : localhost
+!slices!alice!controller_port::INT : 54321
+!slices!alice!creator::STR : fvadmin
+!slices!alice!passwd_crypt::STR : 95a699bf27d229c53643f875970540b2
+!slices!alice!passwd_salt::STR : sillysalt
+!slices!bob!contact_email::STR : bob@foo.com
+!slices!bob!controller_hostname::STR : localhost
+!slices!bob!controller_port::INT : 54322
+!slices!bob!creator::STR : fvadmin
+!slices!bob!passwd_crypt::STR : 38a7b734dd7fdf82db18732a83d1bebb
+!slices!bob!passwd_salt::STR : sillysalt
+!slices!fvadmin!contact_email::STR : fvadmin@localhost
+!slices!fvadmin!controller_hostname::STR : none
+!slices!fvadmin!controller_port::INT : 0
+!slices!fvadmin!creator::STR : fvadmin
+!slices!fvadmin!passwd_crypt::STR : 435d3c53031597e76f05a11d8ad3ddd8
+!slices!fvadmin!passwd_salt::STR : sillysalt
+!switches!default!flood_perm::STR : fvadmin
+!version::STR : flowvisor-0.8.0

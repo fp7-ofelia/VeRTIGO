@@ -1,0 +1,5 @@
+# Name: is optional -- defaults to filename
+
+# this is the template for all switches we don't know anything about
+ID: 1
+datapathid: 00:00:00:00:00:00:00:01

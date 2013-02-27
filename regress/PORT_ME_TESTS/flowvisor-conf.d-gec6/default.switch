@@ -1,0 +1,14 @@
+# This is the config file for switches
+# that we don't explicitly config somewhere else
+# i.e., it is the "default" switch config
+
+# Name: is optional -- defaults to filename
+
+# this is the template for all switches we don't know anything about
+Default: 1
+# This "ID" is where default switches start getting their IDs from
+# i.e., the first default switch will be ID=9999+1, the 2nd, ID=9999+2
+# etc...
+ID: 9999
+# no DatapathID
+
