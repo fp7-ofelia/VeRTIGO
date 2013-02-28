@@ -78,7 +78,7 @@ public class VTLinkBroker {
 	            packetOut.setPacketData(packetData);
 	        } else
 	        	packetOut.setLength(U16.t(packetOut.getLength() + packetOut.getActionsLength()));
-		
+			
 			fromSwitch.sendMsg(packetOut,fromSwitch);
         }
         else{

@@ -420,26 +420,23 @@ public class FVClassifier implements FVEventHandler, FVSendMsg {
 							continue;
 						}
 						if (switchInfo != null) {
-							//VERTIGO
+						//VERTIGO
 							
 							//this is a stats reply for the VTStoreStatistics event handler
 							XidPair pair = xidTranslator.untranslate(m.getXid());
-							//System.out.println("--------- pair: " + pair + "OFType:" + m.getType());
 							if(pair == null && m.getXid() == this.storeStats.stats_xid && m.getType() == OFType.STATS_REPLY) {
 								this.storeStats.storeStatistics(m);
 								this.dropMsg(m, this);
-								return;
 							}
-							
-							// port status update
-							if(m.getType() == OFType.PORT_STATUS) {
-								this.storeStats.updatePortInfo(m);
+							else {
+								// port status update
+								if(m.getType() == OFType.PORT_STATUS) {
+									this.storeStats.updatePortInfo(m);
+								}
+								
+						//END VERTIGO
+								classifyOFMessage(m);
 							}
-							
-							//END VERTIGO
-							
-							classifyOFMessage(m);
-							
 							// mark this channel as still alive
 							this.keepAlive.registerPong();
 						} else

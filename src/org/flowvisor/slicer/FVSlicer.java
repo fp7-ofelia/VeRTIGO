@@ -730,27 +730,35 @@ public class FVSlicer implements FVEventHandler, FVSendMsg {
 		OFPortStatus portStatus = new OFPortStatus();
 		int virtPortId = e.virtPortId;
 		int phyPortId = e.phyPortId;
+		
 		int origPortNumber = 0;
 		List<OFPhysicalPort> inPortList = this.fvClassifier.getSwitchInfo().getPorts();
+		
 		// port mapping
 		for (OFPhysicalPort inPort: inPortList){
 			origPortNumber = (int)inPort.getPortNumber();
 			if(origPortNumber == phyPortId){
 				inPort.setPortNumber((short)virtPortId);
 				if (e.status == true) {
-					portStatus.setReason((byte)0);
+					portStatus.setReason((byte)OFPortReason.OFPPR_ADD.ordinal());
+					inPort.setState(OFPortState.OFPPS_STP_FORWARD.getValue());
 				}
     			else {
-    				portStatus.setReason((byte)1);
-    				inPort.setState((byte)1);
+    				portStatus.setReason((byte)OFPortReason.OFPPR_DELETE.ordinal());
+    				inPort.setState(OFPortState.OFPPS_LINK_DOWN.getValue());
     				}
 				portStatus.setDesc(inPort);
 				break;
 			}
 		}
 		
+		
 		try {
-			this.msgStream.testAndWrite(portStatus);
+			if (this.msgStream != null){
+				this.msgStream.testAndWrite(portStatus);
+			}
+			else FVLog.log(LogLevel.WARN, this, "dropping msg: controller not connected: " + portStatus);
+			
 			for (OFPhysicalPort inPort: inPortList){
 				if((int)inPort.getPortNumber() == virtPortId)
 					inPort.setPortNumber((short)origPortNumber);

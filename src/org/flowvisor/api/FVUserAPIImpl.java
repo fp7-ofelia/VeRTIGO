@@ -6,8 +6,6 @@ package org.flowvisor.api;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.SQLException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -1130,13 +1128,18 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 			VTLink vtLink = new VTLink(linkId);
 			
 			if (!vtLink.FillHopList (linkString))
-				throw new VTMalformedLink("\nLink malformed. Example (2 hops link, from switch aa:.. port 1 " +
-						"to switch cc:... port 2:\n" +
-						" aa:aa:aa:aa:aa:aa:aa/1-bb:bb:bb:bb:bb:bb:bb:bb/1," +
-						"bb:bb:bb:bb:bb:bb:bb:bb/1-cc:cc:cc:cc:cc:cc:cc:cc/2");
+				throw new VTMalformedLink("\n\nWrong virtual link specification. Possible causes are:\n" +
+						" (i) Wrong dpid or port number\n" +
+						"(ii) Syntax error. A virtual link must be described with a comma-separated sequence of dpid/port. E.g.: \n" +
+						"     aa:aa:aa:aa:aa:aa:aa/1-bb:bb:bb:bb:bb:bb:bb:bb/1," +
+						"bb:bb:bb:bb:bb:bb:bb:bb/2-cc:cc:cc:cc:cc:cc:cc:cc/1");
+			
+			
 			if (!vtLink.CheckHopConsistency())
-				throw new VTMalformedLink("\nLink inconsistent. 1) Destination switch in one hop " +
-						"must be source switch for next hop. 2) Ports must be different one same switch");
+				throw new VTMalformedLink("\n\nWrong virtual link specification. Possible causes are:\n" +
+						" (i) Hops have not been inserted in the right order\n" +
+						"(ii) Hops composing the virtual link do not exist in the physical topology");
+			
 			
 			//TODO: add a check to avoid links duplication
 			FVConfig.addVirtualLink(sliceName, vtLink); 
@@ -1176,13 +1179,17 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 			VTLink vtLink = new VTLink(Integer.parseInt(linkName));
 			
 			if (!vtLink.FillHopList (linkStructure))
-				throw new VTMalformedLink("Link malformed. Example (2 hops link, from switch aa:.. port 1 " +
-						"to switch cc:... port 2:\n" +
-						" aa:aa:aa:aa:aa:aa:aa/1-bb:bb:bb:bb:bb:bb:bb:bb/1," +
-						"bb:bb:bb:bb:bb:bb:bb:bb/1-cc:cc:cc:cc:cc:cc:cc:cc/2");
+				throw new VTMalformedLink("\n\nWrong virtual link specification. Possible causes are:\n" +
+						" (i) Wrong dpid or port number\n" +
+						"(ii) Syntax error. A virtual link must be described with a comma-separated sequence of dpid/port. E.g.: \n" +
+						"     aa:aa:aa:aa:aa:aa:aa/1-bb:bb:bb:bb:bb:bb:bb:bb/1," +
+						"bb:bb:bb:bb:bb:bb:bb:bb/2-cc:cc:cc:cc:cc:cc:cc:cc/1");
+			
+			
 			if (!vtLink.CheckHopConsistency())
-				throw new VTMalformedLink("Link inconsistent. 1) Destination switch in one hop " +
-						"must be source switch for next hop. 2) Ports must be different one same switch");
+				throw new VTMalformedLink("\n\nWrong virtual link specification. Possible causes are:\n" +
+						" (i) Hops have not been inserted in the right order\n" +
+						"(ii) Hops composing the virtual link do not exist in the physical topology");
 			
 			try {
 				FVConfig.changeVirtualLink(sliceName, vtLink);

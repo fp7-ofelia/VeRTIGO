@@ -681,6 +681,7 @@ public class VTSqlDb {
 	public boolean sqlUpdateVirtualLink(String sliceId, VTLink currentLink, int status, VTConfigInterface vtConfig) 
 	throws SQLException {
 		boolean ret = true;
+		
 		HashMap<Long,LinkedList<String>> activeFlows = new HashMap<Long,LinkedList<String>>();
 		LinkedList<VTLinkStatus> linkStatusList = new LinkedList<VTLinkStatus>();
 		switch (status) {
@@ -1327,8 +1328,6 @@ public class VTSqlDb {
 		}
 		
 		Set<Integer> keySetLinkTmpMap = linkTmpMap.keySet();
-		long nextHop;
-		int nextHop_inputPort;
 		for(int currentLink:keySetLinkTmpMap) {
 			linkSwitchMap.put(currentLink, sqlGetNextHop(sliceId, currentLink, switchId, linkTmpMap.get(currentLink)));
 		}

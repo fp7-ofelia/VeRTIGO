@@ -3,11 +3,20 @@
  */
 package org.flowvisor.vtopology.topology_configurator;
 
+import java.sql.SQLException;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
+import org.flowvisor.VeRTIGO;
+import org.flowvisor.api.LinkAdvertisement;
+import org.flowvisor.classifier.FVClassifier;
 import org.flowvisor.config.ConfigError;
 import org.flowvisor.config.FVConfig;
+import org.flowvisor.events.FVEventHandler;
+import org.flowvisor.ofswitch.TopologyController;
+import org.openflow.protocol.OFPhysicalPort;
 
 /**
  * @author gerola
@@ -75,9 +84,35 @@ public class VTLink {
 	}
 	
 	private boolean CheckHopFields (String srcDpid, int srcPort, String dstDpid, int dstPort) {
-		int maxSwitchPortNumber = 48;
-		if (srcPort < 0 || dstPort < 0 || srcPort > maxSwitchPortNumber || dstPort > maxSwitchPortNumber)
-			return false;
+		
+		/* Here we check whether the src port belongs to srcDpid and dstPort belongs to dstDpid */		
+		List<FVEventHandler> handlers = VeRTIGO.getInstance().getHandlersCopy();
+		boolean srcHop = false, dstHop = false;
+		for (FVEventHandler handler : handlers) {
+			if (handler.getName().contains("classifier-")) {
+				FVClassifier tmpClassifier = (FVClassifier) handler;
+				List<OFPhysicalPort> inPortList = tmpClassifier.getSwitchInfo().getPorts();
+				if (handler.getName().contains(srcDpid) && !srcHop) {
+					for (OFPhysicalPort inPort: inPortList){
+						if(srcPort == inPort.getPortNumber()){
+							srcHop = true;
+							break;
+						}
+					}
+				}
+				else if (handler.getName().contains(dstDpid) && !dstHop) {
+					for (OFPhysicalPort inPort: inPortList){
+						if(dstPort == inPort.getPortNumber()){
+							dstHop = true;
+							break;
+						}
+					}
+				}
+			}
+		}
+		
+		if(!srcHop || !dstHop) return false;
+
 		for (int j=0; j<2; j++) {
 			String[] mac = null;
 			if (j == 0)
@@ -123,7 +158,44 @@ public class VTLink {
 		return true;
 	}
 	
+
+	/**
+	 * @name CheckHopConsistency
+	 * @authors roberto.doriguzzi matteo.gerola
+     * @return true if: (i) hops have been declared in the right order
+     * 					(ii) the dst port of one link is different from the src port of the next one
+	 */
+	
 	public boolean CheckHopConsistency() {
+		
+		/* Here we check the hops of the virtual link against the physical links */
+		TopologyController topologyController = TopologyController.getRunningInstance();
+		if (topologyController != null) {
+			List<Map<String, String>> list = new LinkedList<Map<String, String>>();
+			for (Iterator<LinkAdvertisement> it = topologyController.getLinks()
+					.iterator(); it.hasNext();) {
+				LinkAdvertisement linkAdvertisement = it.next();
+				list.add(linkAdvertisement.toMap());
+			}
+		    if(!list.isEmpty()) {
+				for (VTHop vtHop:this.vtHopList) {	
+					boolean result = false;
+					for(Map<String, String> hop:list){
+						
+						if((Integer.toString(vtHop.srcPort).equals(hop.get("srcPort")) && vtHop.srcDpid.equals(hop.get("srcDPID")) &&
+						   Integer.toString(vtHop.dstPort).equals(hop.get("dstPort")) && vtHop.dstDpid.equals(hop.get("dstDPID"))) ||
+						   (Integer.toString(vtHop.srcPort).equals(hop.get("dstPort")) && vtHop.srcDpid.equals(hop.get("dstDPID")) &&
+						   Integer.toString(vtHop.dstPort).equals(hop.get("srcPort")) && vtHop.dstDpid.equals(hop.get("srcDPID")))) {
+							result = true;
+							break;
+						}
+					}
+					if(!result) return false;
+				}
+		    }
+		}
+		
+		
 		VTHop avHopOld = new VTHop();
 		for (VTHop avHopNew:this.vtHopList) {
 			if (avHopOld.hopId != 0) {
