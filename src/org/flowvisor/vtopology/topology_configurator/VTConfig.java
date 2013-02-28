@@ -18,19 +18,32 @@ public class VTConfig {
 	
 	public VTConfig() {
 		this.vtSliceList = new LinkedList<VTSlice>();
+		List<String> slices = null;
+		List<String> entries;
+		
+		try {
+			entries = FVConfig.list(FVConfig.SLICES);
+			slices = new LinkedList<String>(entries);
+			for (String currentSlice:slices) {
+				if (!currentSlice.equals("root")) {
+					VTSlice vtSlice = new VTSlice();
+					vtSlice.GetVTSliceConfig(currentSlice);
+					this.vtSliceList.add(vtSlice);
+				}
+			}
+		} catch (ConfigError e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}	
 	}
 	
-	public void GetConfigVTTree() throws RuntimeException, ConfigError {
-		List<String> slices = null;
-		List<String>entries = FVConfig.list(FVConfig.SLICES);
-		slices = new LinkedList<String>(entries);
-		for (String currentSlice:slices) {
-			if (!currentSlice.equals("root")) {
-				VTSlice vtSlice = new VTSlice();
-				vtSlice.GetVTSliceConfig(currentSlice);
-				this.vtSliceList.add(vtSlice);
-			}
+	public VTSlice getVTSlice(String sliceId) {
+		System.out.println("Input sliceName: " + sliceId);
+		for(VTSlice slice:this.vtSliceList) {
+			System.out.println("VTSlice: " + slice.sliceId);
+			if(sliceId.equals(slice.sliceId)) return slice;
 		}
+		return null;
 	}
 	
 }

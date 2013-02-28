@@ -122,7 +122,7 @@ bin_SCRIPTS="\
     "
 
 sbin_SCRIPTS="\
-    fvconfig \
+    veconfig \
     vertigo \
     "
 
@@ -226,5 +226,5 @@ $install $verbose --owner=$binuser --group=$bingroup --mode=644 $DOCS $root$pref
 
 if [ ! -f $root$prefix/etc/vertigo/config.xml ] ; then 
     echo Generating a default config VeRTIGO config
-    install_root=$root $root$prefix/sbin/fvconfig generate $root$prefix/etc/vertigo/config.xml
+    install_root=$root $root$prefix/sbin/veconfig generate $root$prefix/etc/vertigo/config.xml
 fi

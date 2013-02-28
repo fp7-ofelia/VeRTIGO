@@ -5,6 +5,7 @@ package org.flowvisor.slicer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 
 import org.flowvisor.VeRTIGO;
 import org.flowvisor.classifier.FVClassifier;
@@ -32,6 +34,7 @@ import org.flowvisor.events.VTLLDPEvent;
 import org.flowvisor.exceptions.BufferFull;
 import org.flowvisor.exceptions.MalformedOFMessage;
 import org.flowvisor.exceptions.UnhandledEvent;
+import org.flowvisor.flows.FlowEntry;
 import org.flowvisor.flows.FlowMap;
 import org.flowvisor.flows.FlowRewriteDB;
 import org.flowvisor.flows.FlowSpaceUtil;
@@ -43,12 +46,13 @@ import org.flowvisor.log.LogLevel;
 import org.flowvisor.log.SendRecvDropStats;
 import org.flowvisor.log.SendRecvDropStats.FVStatsType;
 import org.flowvisor.message.FVMessageFactory;
+import org.flowvisor.message.FVPacketOut;
 import org.flowvisor.message.SanityCheckable;
 import org.flowvisor.message.Slicable;
 import org.flowvisor.message.FVPacketIn;
 import org.flowvisor.vtopology.node_mapper.port_mapper.VTPortMapper;
 import org.flowvisor.vtopology.topology_configurator.VTConfigInterface;
-import org.flowvisor.vtopology.link_broker.*;
+import org.flowvisor.vtopology.topology_configurator.VTHashMap;
 import org.openflow.protocol.OFHello;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
@@ -76,7 +80,7 @@ public class FVSlicer implements FVEventHandler, FVSendMsg {
 	final int maxReconnectSeconds = 15;
 	int port; // the tcp port of our controller
 	boolean isConnected;
-	FVMessageAsyncStream msgStream;
+	public FVMessageAsyncStream msgStream;
 	short missSendLength;
 	boolean allowAllPorts;
 	FlowMap localFlowSpace;
@@ -87,6 +91,7 @@ public class FVSlicer implements FVEventHandler, FVSendMsg {
 	boolean floodPerms;
 	Map<Short, Boolean> allowedPorts; // ports in this slice and whether they
 	boolean reconnectEventScheduled = false;
+	private VTConfigInterface vt_config;
 
 	/**
 	 * @authors roberto.doriguzzi matteo.gerola
@@ -112,6 +117,13 @@ public class FVSlicer implements FVEventHandler, FVSendMsg {
 		FVConfig.watch(this, FVConfig.FLOW_TRACKING);
 		updateFlowTrackingConfig();
 		this.isVirtual=false;
+		
+		// VERTIGO
+		if(this.sliceName != "fvadmin"){
+			vt_config = new VTConfigInterface();
+			vt_config.vt_hashmap = VTHashMap.getInstance(this,sliceName);
+		}
+		//END VERTIGO
 	}
 
 	private void updateFlowTrackingConfig() {
@@ -267,62 +279,38 @@ public class FVSlicer implements FVEventHandler, FVSendMsg {
 		if (this.msgStream != null) {
 			// VERTIGO
 			if(this.sliceName != "fvadmin" && from.equals(this.fvClassifier)){ // do not process flows that belong to the "fvadmin" slice
-				VTConfigInterface vt_config = new VTConfigInterface();
 				VTPortMapper port_mapper = new VTPortMapper(msg,vt_config);
-				ArrayList <FVEventHandler> fvHandlersList = VeRTIGO.getInstance().getHandlersCopy();
-				do {
-					FVClassifier tmpClassifier;
-					tmpClassifier = port_mapper.UpLinkMapping(this, this.sliceName, (FVClassifier)from);
-					FVSlicer tmpSlicer = this;
 					
-					// in case of port status messages (ports up/down) we have to send the messages to the controller we the right slicer
-					// corresponding to the classifier that is an end point of the virtual link affected
-					if(msg.getType() == OFType.PORT_STATUS) {  
-						for(FVEventHandler handler: fvHandlersList){
-							if(handler.getName().contains("slicer") && handler.getName().contains(this.sliceName)){
-								if(((FVSlicer)handler).fvClassifier == tmpClassifier) {
-									tmpSlicer = ((FVSlicer)handler);
-									break;
-								}
-							}
+				if(port_mapper.UpLinkMapping(this, this.sliceName, (FVClassifier)from) > 0)
+				{
+					if(port_mapper.end_point) { //sending the message to the controller
+						FVLog.log(LogLevel.DEBUG, this, "send to controller: ", msg);
+						try {
+							this.msgStream.testAndWrite(msg);
+						} catch (BufferFull e) {
+							FVLog.log(LogLevel.CRIT, this,
+									"buffer full: tearing down: got ", e,
+									": resetting connection");
+							this.reconnectLater();
+						} catch (MalformedOFMessage e) {
+							this.stats.increment(FVStatsType.DROP, from, msg);
+							FVLog.log(LogLevel.CRIT, this, "BUG: ", e);
+						} catch (IOException e) {
+							FVLog.log(LogLevel.WARN, this, "reconnection; got IO error: ",
+									e);
+							this.reconnectLater();
 						}
-					}
+					}else { // the switch is a middlepoint => the switch is controlled directly by VeRTIGO 
+						    // therefore this message is not forwarded to the controller
 						
-					if(port_mapper.nr_msgs > 0)
-					{
-						if(port_mapper.end_point) { //sending the message to the controller
-							FVLog.log(LogLevel.DEBUG, this, "send to controller: ", msg);
-							try {
-								tmpSlicer.msgStream.testAndWrite(msg);
-							} catch (BufferFull e) {
-								FVLog.log(LogLevel.CRIT, tmpSlicer,
-										"buffer full: tearing down: got ", e,
-										": resetting connection");
-								tmpSlicer.reconnectLater();
-							} catch (MalformedOFMessage e) {
-								tmpSlicer.stats.increment(FVStatsType.DROP, from, msg);
-								FVLog.log(LogLevel.CRIT, tmpSlicer, "BUG: ", e);
-							} catch (IOException e) {
-								FVLog.log(LogLevel.WARN, tmpSlicer, "reconnection; got IO error: ",
-										e);
-								tmpSlicer.reconnectLater();
-							}
-						}else { // the switch is not an endpoint => the switch is controlled directly by VeRTIGO
-							if(msg.getType() == OFType.PACKET_IN){
-								VTLinkBroker link_broker = new VTLinkBroker((FVPacketIn)msg,vt_config);
-								link_broker.Main(from);
-							}
-							this.dropMsg(msg, from);
-							return;
-						}
-						port_mapper.nr_msgs--;
-					}
-					else {
 						this.dropMsg(msg, from);
 						return;
 					}
 				}
-				while(port_mapper.nr_msgs > 0);
+				else {
+					this.dropMsg(msg, from);
+					return;
+				}
 
 			}//END VERTIGO
 			else {
@@ -605,7 +593,6 @@ public class FVSlicer implements FVEventHandler, FVSendMsg {
 				FVLog.log(LogLevel.DEBUG, this, "recv from controller: ", msg);
 				// VERTIGO
 				if(this.sliceName != "fvadmin"){
-					VTConfigInterface vt_config = new VTConfigInterface();
 					VTPortMapper port_mapper = new VTPortMapper(msg,vt_config);
 					if(!port_mapper.DownLinkMapping(this, this.sliceName, fvClassifier.getDPID())){
 						FVLog.log(LogLevel.CRIT, this,

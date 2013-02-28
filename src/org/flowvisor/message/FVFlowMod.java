@@ -12,6 +12,7 @@ import org.flowvisor.slicer.FVSlicer;
 import org.openflow.protocol.OFError.OFBadActionCode;
 import org.openflow.protocol.OFError.OFFlowModFailedCode;
 import org.openflow.protocol.OFFlowMod;
+import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
 
 public class FVFlowMod extends org.openflow.protocol.OFFlowMod implements
@@ -37,7 +38,6 @@ public class FVFlowMod extends org.openflow.protocol.OFFlowMod implements
 		FVMessageUtil.translateXid(this, fvClassifier, fvSlicer);
 
 		// FIXME: sanity check buffer id
-
 		// make sure the list of actions is kosher
 		List<OFAction> actionsList = this.getActions();
 		try {

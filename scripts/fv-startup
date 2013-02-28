@@ -34,8 +34,8 @@
 # Description:       VeRTIGO is a special purpose OpenFlow controller that extends FlowVisor to provide a full network virtualization architecture.
 ### END INIT INFO
 
-FV_USER=FVUSER
-FV_CONFIG=PREFIX/etc/vertigo/config.xml
+FV_USER=root
+FV_CONFIG=/usr/local/etc/vertigo/config.xml
 
 ## abend 
 # 
@@ -55,7 +55,7 @@ start)
       echo File \"$FV_CONFIG\" not found >&2
   fi
 
-  sudo -u $FV_USER PREFIX/sbin/vertigo $FV_CONFIG >> /var/log/vertigo/vertigo-stderr.log 2>&1 &
+  sudo -u $FV_USER /usr/local/sbin/vertigo $FV_CONFIG >> /var/log/vertigo/vertigo-stderr.log 2>&1 &
   ;;
 
 stop)

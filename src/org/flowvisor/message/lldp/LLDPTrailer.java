@@ -116,10 +116,12 @@ public class LLDPTrailer {
 		ByteBuffer packet = ByteBuffer.wrap(pi.getPacketData());
 		if (packet.capacity() < MIN_LENGTH)
 			return null;
+
 		// work backwards through the trailer
 		int offset = packet.capacity() - MAGIC_LEN;
 		if (packet.getInt(offset) != MAGIC)
 			return null; // didn't find MAGIC trailer
+
 		offset -= FLOWNAMELEN_LEN;
 		byte flowLen = packet.get(offset);
 		offset -= SLICENAMELEN_LEN;

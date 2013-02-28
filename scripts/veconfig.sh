@@ -4,7 +4,7 @@
 
 usage() {
     cat << "EOF"  
-USAGE: fvconfig cmd config.xml [options]
+USAGE: veconfig cmd config.xml [options]
     match config.xml <dpid> <match>
     dump config.xml
     chpasswd config.xml <slicename>

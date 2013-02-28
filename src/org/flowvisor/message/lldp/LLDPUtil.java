@@ -66,7 +66,7 @@ public class LLDPUtil {
 	 * @return
 	 */
 
-	static private boolean LLDPCheck(byte[] packetArray) {
+	static public boolean LLDPCheck(byte[] packetArray) {
 		if ((packetArray == null) || (packetArray.length < 14))
 			return false; // not lddp if no packet exists or too short
 		ByteBuffer packet = ByteBuffer.wrap(packetArray);
@@ -116,13 +116,14 @@ public class LLDPUtil {
 		else
 			FVLog.log(LogLevel.DEBUG, fvClassifier,
 					"broadcasting b.c no lldp trailer found");
-		short inport = pi.getInPort();
-		pi.setXid(0xdeaddead); // mark this as broadcasted
-		for (FVSlicer fvSlicer : fvClassifier.getSlicers()) {
-			if (fvSlicer.portInSlice(inport) && fvSlicer.isConnected())
-				fvSlicer.sendMsg(pi, fvClassifier);
-
-		}
+// VERTIGO: we don't want unrequested LLDP messages
+//		short inport = pi.getInPort();
+//		pi.setXid(0xdeaddead); // mark this as broadcasted
+//		for (FVSlicer fvSlicer : fvClassifier.getSlicers()) {
+//			if (fvSlicer.portInSlice(inport) && fvSlicer.isConnected())
+//				fvSlicer.sendMsg(pi, fvClassifier);
+//		}
+// END VERTIGO
 		return true;
 	}
 }

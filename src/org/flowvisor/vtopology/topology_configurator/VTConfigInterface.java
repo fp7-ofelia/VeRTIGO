@@ -6,12 +6,19 @@ package org.flowvisor.vtopology.topology_configurator;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.Map.Entry;
 
+import org.flowvisor.classifier.FVClassifier;
+import org.flowvisor.classifier.FVSendMsg;
 import org.flowvisor.config.ConfigError;
 import org.flowvisor.message.FVFlowMod;
+import org.flowvisor.message.FVPacketIn;
 import org.flowvisor.message.FVPacketOut;
+import org.flowvisor.slicer.FVSlicer;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFType;
 /**
  * @name VTConfigInterface
@@ -23,18 +30,14 @@ public class VTConfigInterface {
 	public boolean isEndPoint; 	// property of a switch: end point of a virtual link
 	public short phyPortId;
 	public short virtPortId;
-	public int linkId;
-	public OFMatch flowMatch;
-	public LinkedList<Integer> virtPortList;
-	public LinkedList<Integer> phyPortList;
-	public HashMap<Integer,Integer> virtToPhyPortMap;
-	public HashMap<Integer,LinkedList<Integer>> phyToVirtPortMap;
-	public HashMap<Integer,Integer> controlChannelMap; 	
+	public HashMap<Integer,List<Integer>> bufferIdMap;
+	public HashMap<Integer,Integer> controlChannelMap; 
+	public HashMap<Integer, LinkedList<Integer>> linkMap;  //list of links for connected to each physical port
 	public boolean isFlowMod;
 	public int idleTO;
 	public int hardTO;
-	public HashMap<Long,LinkedList<Integer>> classifierToVirtPortMap;
 	private VTSqlDb dbQuery;
+	public VTHashMap vt_hashmap;
 
 	
 /**
@@ -46,14 +49,9 @@ public class VTConfigInterface {
 		isEndPoint = false;
 		phyPortId = 0;
 		virtPortId = 0;
-		linkId = 0;
-		flowMatch = new OFMatch();
-		virtPortList = new LinkedList<Integer>();
-		phyPortList = new LinkedList<Integer>();
-		virtToPhyPortMap = new HashMap<Integer,Integer>();
+		bufferIdMap = new HashMap<Integer,List<Integer>>();
 		controlChannelMap = new HashMap<Integer,Integer>();
-		phyToVirtPortMap = new HashMap<Integer,LinkedList<Integer>>();
-		classifierToVirtPortMap = new HashMap<Long,LinkedList<Integer>>();
+		linkMap = new HashMap<Integer, LinkedList<Integer>>();
 		dbQuery = VTSqlDb.getInstance();
 	}
 
@@ -67,13 +65,8 @@ public class VTConfigInterface {
 		isEndPoint=false;
 		phyPortId = 0;
 		virtPortId = 0;
-		linkId = 0;
-		virtPortList.clear();
-		phyPortList.clear();
-		virtToPhyPortMap.clear();
 		controlChannelMap.clear();
-		phyToVirtPortMap.clear();
-		classifierToVirtPortMap.clear();
+		linkMap.clear();
 		isFlowMod = false;
 		idleTO = 0;
 		hardTO = 0;
@@ -101,32 +94,24 @@ public class VTConfigInterface {
 /**
  * @name VTInitSwitchInfo
  * @authors roberto.doriguzzi matteo.gerola
- * @info This function is used when a FeatureReply packet arrives. VT initialises the db for the switch, adding virtual 
- * ports (access or link) associated to the physical ports provided
+ * @info This function is used when a FeatureReply packet arrives and initializes the db for the switch
  * @param String sliceId = name of the slice
  * @param long switchId = dpid of the switch
- * @param phyPortList = list of the physical ports of the switch in this slice
- * @return phyToVirtPortMap = mapping between physical and virtual ports
- * @return ret = boolean return code (TRUE: ok, FALSE: error in the function)  
+ * @param List<OFPhysicalPort> phyPortList = list of the physical ports of the switch
  */
-	public boolean InitSwitchInfo(String sliceId, long switchId)  {
-		boolean ret=true;
+	public void InitSwitchInfo(String sliceId, long switchId,List<OFPhysicalPort> phyPortList)  {
 		try {
-			ret = dbQuery.sqlDbInitSwitchInfo(sliceId, switchId, this);
+			dbQuery.sqlDbInitSwitchInfo(sliceId, switchId, phyPortList);
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			ret = false;
 		} catch (RuntimeException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			ret = false;
 		} catch (ConfigError e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			ret = false;
 		}		
-		return ret;
 	}
 
 	
@@ -139,34 +124,31 @@ public class VTConfigInterface {
  * @param int portId = port identifier
  * @param boolean portStatus = new port status (0 = down, 1 = up)
  * @return classifierToVirtPortMap = mapping between switchId and virtual ports
- * @return ret = boolean return code (TRUE: ok, FALSE: error in the function)  
  */
-	public boolean UpdatePortStatus(String sliceId, long switchId, int portId, boolean portStatus)  {
-		boolean ret=true;
+	public HashMap<Long,LinkedList<Integer>> UpdatePortStatus(String sliceId, long switchId, int portId, boolean portStatus)  {
+		HashMap<Long,LinkedList<Integer>> ret=null;
 		try {
-			ret = dbQuery.sqlDbUpdatePortStatus(sliceId, switchId, portId, portStatus, this);
+			ret = dbQuery.sqlDbUpdatePortStatus(sliceId, switchId, portId, portStatus);
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			ret = false;
+			ret = null;
 		} 
 		return ret;
 	}	
 	
 /**
- * @name GetLinkId
+ * @name GetEndPoint
  * @authors roberto.doriguzzi matteo.gerola
- * @info Returns the identifier of the virtual link crossed by the flow.  
+ * @info This function tells you whether a switch is an end-point of a link
  * @param String sliceId = name of the slice
  * @param long switchId = dpid of the switch
- * @param String flowMatch = packet match
- * @return ret = the virtual link identifier  
+ * @return isEndPoint = TRUE if the switch is an end point, FALSE otherwise
  */
-	public boolean GetLinkId(String sliceId, long switchId, String flowMatch, int inputPort) {
+	public boolean GetEndPoint(String sliceName,long switchId, short linkId) {
 		boolean ret=false;
 		try {
-			linkId = dbQuery.sqlDbGetLinkId(sliceId, switchId,flowMatch, inputPort, this);
-			ret = true;
+			ret = dbQuery.sqlGetEndPoint(sliceName,switchId,linkId);
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -175,116 +157,69 @@ public class VTConfigInterface {
 		return ret;
 	}	
 	
-	
 /**
- * @name GetSwitchInfo
+ * @name GetPhyToVirtMap
  * @authors roberto.doriguzzi matteo.gerola
- * @info This function is used when a packet from a switch is directed to a controller. 
- * A list of physical ports is mapped in virtual ports. 
- * It also returns informations about the switch position in the link (endPoint, if not => send pkt to the link_broker)
+ * @info This function returns the virtual port which connects the Virtual Link "linkId" with to the switch "switchId" 
  * @param String sliceId = name of the slice
  * @param long switchId = dpid of the switch
- * @param String flowMatch = packet match
- * @return isEndPoint = TRUE if the switch is an end point, FALSE otherwise
- * @return phyToVirtPortMap = mapping between physical and virtual ports (only if isEnd Point == TRUE)
- * @return phyPortId = physical output port (only if isEnd Point == FALSE)
- * @return ret = boolean return code (TRUE: ok, FALSE: error in the function)  
+ * @param short linkId = link identifier
+ * @return Integer = the virtual port number
  */
-	public boolean GetSwitchInfo(String sliceId, long switchId, String flowMatch) {
-		boolean ret=true;
+	public Integer GetPhyToVirtMap(String sliceName,long switchId, short linkId) {
+		Integer virtPortId = null;
 		try {
-			ret = dbQuery.sqlDbGetSwitchInfo(sliceId, switchId,flowMatch, this);
+			virtPortId = dbQuery.sqlGetPhyToVirtMap(sliceName, switchId, linkId); 
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			ret = false;
+			virtPortId = null;
 		}		
-		return ret;
-	}
+		return virtPortId;
+	}	
+	
+/**
+ * @name GetPhyToVirtMap
+ * @authors roberto.doriguzzi matteo.gerola
+ * @info This function returns the list of virtual ports mapped on each physical port
+ * @param String sliceId = name of the slice
+ * @param long switchId = dpid of the switch
+ * @return HashMap<Integer,LinkedList<Integer>> = the mapping between physical and virtual ports
+ */
+	public HashMap<Integer,LinkedList<Integer>> GetPhyToVirtMap(String sliceName,long switchId) {
+		HashMap<Integer,LinkedList<Integer>> map;
+		try {
+			map = dbQuery.sqlGetPhyToVirtMap(sliceName, switchId); 
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			map = null;
+		}		
+		return map;
+	}	
+		
 	
 		
 /**
- * @name GetVirttoPhyPortMap
+ * @name GetVirtPortsMappings
  * @authors roberto.doriguzzi matteo.gerola
- * @info This function is used to convert a list of virtual ports sent from a controller to a switch
+ * @info This function returns the mapping between virtual ports and (physical ports, virtual links)
  * @param String sliceId = name of the slice
  * @param long switchId = dpid of the switch
- * @param String flowMatch = packet match (L2+L3) 
- * @param int priority = flow entry priority (only for flow_mod messages)
- * @param virtPortId = input virtual port
- * @param virtPortList = list of the output virtual ports of the switch in this slice
- * @return phyPortId = input physical port     
- * @return virtToPhyPortMap = mapping between virtual ports and physical ports
- * @return ret = boolean return code (TRUE: ok, FALSE: error in the function)  
+ * @return VirtToPhyPortMap = mapping between virtual ports and (physical ports, virtual links) 
  */
-	public boolean GetVirttoPhyPortMap(OFMessage msg, String sliceId, long switchId, String flowMatch, int priority) {
-		boolean ret=true;
+	public HashMap<Integer,LinkedList<Integer>> GetVirtPortsMappings(String sliceId, long switchId) {
+		HashMap<Integer,LinkedList<Integer>> ret=null;
 		try {
-			ret = dbQuery.sqlGetVirttoPhyPortMap(sliceId, switchId,flowMatch, priority, this);
+			ret = dbQuery.sqlGetVirtPortsMappings(sliceId, switchId);
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
-			System.out.println("EXCEPTION CATCH ------------" + Long.toHexString(switchId) + "------------");
-			if (msg.getType() == OFType.PACKET_OUT) {
-				FVPacketOut packetOut = (FVPacketOut) msg;
-				System.out.println("PACKET_OUT: " + packetOut.toString());
-			
-			}
-			else if (msg.getType() == OFType.FLOW_MOD) {
-				FVFlowMod flowMod = (FVFlowMod) msg;
-				System.out.println("FLOW_MOD: " + flowMod.toString());
-			
-			}
 			e.printStackTrace();
-			ret = false;
+			ret = null;
 		}		
 		return ret;
 	}
 	
-	
-/**
- * @name StorePktInFlowInfo
- * @authors roberto.doriguzzi matteo.gerola
- * @info This function is used to store a flowMatch associated with an unique bufferId
- * @param String sliceId = name of the slice
- * @param long switchId = dpid of the switch
- * @param String flowMatch = packet match (L2+L3) 
- * @param int bufferId = packet In identifier
- */
-	public boolean StorePktInFlowInfo(String flowMatch, int bufferId, String sliceId, long switchId) {
-		boolean ret=true;
-		try {
-			ret = dbQuery.sqlStorePktInFlowInfo(flowMatch, bufferId, sliceId, switchId);
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			ret = false;
-		}		
-		return ret;
-	}
-	
-	
-/**
- * @name GetPktInFlowInfo
- * @authors roberto.doriguzzi matteo.gerola
- * @info This function get a flowMatch from a bufferId
- * @param String sliceId = name of the slice
- * @param long switchId = dpid of the switch
- * @param int bufferId = packet In identifier
- * @return String flowMatch = packet match (L2+L3) 
- */
-	public boolean GetPktInFlowInfo(int bufferId, String sliceId, long switchId) {
-		boolean ret=true;
-		try {
-			ret = dbQuery.sqlGetPktInFlowInfo(bufferId, sliceId, switchId, this);
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			ret = false;
-		}		
-		return ret;
-	}
-	
-		
 /**
  * @name GetControlChannelMap
  * @authors roberto.doriguzzi matteo.gerola
@@ -305,14 +240,14 @@ public class VTConfigInterface {
  * @return linkId = current linkId maximum value in the slice
  * @return ret = boolean return code (TRUE: ok, FALSE: error in the function)  
  */
-	public boolean GetNewLinkId (String sliceId, String linkName) {
-		boolean ret = true;
+	public short GetNewLinkId (String sliceId, String linkName) {
+		short ret = -1;
 		try {
 			ret = dbQuery.sqlGetNewLinkId (sliceId, linkName, this);
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			ret = false;
+			ret = -1;
 		}
 		return ret;
 	}
@@ -340,28 +275,6 @@ public class VTConfigInterface {
 	}
 
 /**
- * @name RemoveFlowInfo
- * @authors roberto.doriguzzi matteo.gerola
- * @info This function remove all the information stored in the database regarding a flow, 
- * when a flow_rem arrived to flowvisor
- * @param String sliceId = name of the slice 
- * @param long switchId = dpid of the switch
- * @param String flowMatch = packet match (L2+L3)  
- * @return ret = boolean return code (TRUE: ok, FALSE: error in the function)  
- */
-	public boolean RemoveFlowInfo(String sliceId, long switchId, String flow_match) {
-		boolean ret = true;
-		try {
-			ret = dbQuery.sqlRemoveFlowInfo (sliceId, switchId, flow_match);
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			ret = false;
-		}
-		return ret;
-	}	
-	
-/**
  * @name RemoveSliceInfo
  * @authors roberto.doriguzzi matteo.gerola
  * @info This function remove all the information stored in the database regarding a slice, 
@@ -371,6 +284,8 @@ public class VTConfigInterface {
  */
 	public boolean RemoveSliceInfo(String sliceId) {
 		boolean ret = true;
+		vt_hashmap.removeSlice(sliceId);
+		
 		try {
 			ret = dbQuery.sqlRemoveSliceInfo (sliceId);
 		} catch (SQLException e) {
@@ -381,10 +296,155 @@ public class VTConfigInterface {
 		return ret;
 	}
 	
-	public boolean ManageVLinkLLDP(String sliceId, long switchId, byte[] bs) {
+/**
+ * @name InstallMiddlePointEntries
+ * @authors roberto.doriguzzi matteo.gerola
+ * @info This function installs static flow entries on middlepoint switches of virtual links 
+ * @param FVSlicer slicer = pointer to the slicer
+ * @param FVClassifier fromSwitch = classifier  
+ * @param short inPort = the input port
+ * @param int buffer_id = the buffer id for the flow_mod message
+ * @param Integer linkId = the virtual link identifier. linkId==0 means all virtual links crossing the middlepoint
+ * @return ret = boolean return code (TRUE: ok, FALSE: error in the function)  
+ */
+	public boolean InstallStaticMiddlePointEntries(FVSlicer slicer, FVClassifier fromSwitch, Integer linkId, short inPort, int buffer_id, String sliceId) {
+		boolean ret = true;
+		HashMap <Integer,LinkedList<Integer>> LinkList;
+		
+		try {
+			LinkList = dbQuery.sqlGetMiddlePointLinks(sliceId, fromSwitch.getDPID(),linkId);
+//			System.out.println("InstallMiddlePointEntries Slice: " + sliceId + " Switch: " + Long.toHexString(fromSwitch.getDPID()) + " LinkList: " + LinkList.toString());
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return false;
+		}
+		
+		vt_hashmap.InstallStaticMiddlePointEntries(slicer, fromSwitch, inPort, buffer_id, LinkList); 
+		
+		return ret;
+	}	
+	
+/**
+ * @name InstallMiddlePointEntries
+ * @authors roberto.doriguzzi matteo.gerola
+ * @info This function installs/removes flow entries on middlepoint switches of virtual links as a consequence of flow_mods arrived to endpoints from the controller
+ * @param OFMAtch match, Integer linkId, String sliceId
+ * 
+ * @return ret = boolean return code (TRUE: ok, FALSE: error in the function)  
+ */
+	public boolean ManageMiddlePointEntries(String sliceId, Long switchId, FVFlowMod flowMod, Integer linkId) {
+		boolean ret = true;
+		HashMap <Long,LinkedList<Integer>> MiddlePointList;
+		HashMap <LinkedList<Long>,Integer> HopList;
+		
+		try {
+			MiddlePointList = dbQuery.sqlGetLinkMiddlePoints(sliceId, linkId);
+			HopList = dbQuery.sqlGetLinkHops(sliceId, linkId); 
+//			System.out.println("ManageMiddlePointEntries Slice: " + sliceId + " MiddlePointList: " + MiddlePointList.toString());
+//			System.out.println("ManageMiddlePointEntries Slice: " + sliceId + " HopList: " + HopList.toString());
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return false;
+		}
+		
+		vt_hashmap.ManageMiddlePointEntries(switchId, flowMod, linkId, MiddlePointList, HopList); 
+		
+		return ret;
+	}
+	
+/**
+ * @name GetVirtualPortLinkMapping
+ * @authors roberto.doriguzzi matteo.gerola
+ * @info This function returns the mapping between virtual ports and virtual links
+ * @param String sliceId = name of the slice  
+ * @param long switchId = switch identifier  
+ * @return ret = the mapping between virtual ports and virtual links
+ */
+	public HashMap <Integer,Integer> GetVirtualPortLinkMapping(String sliceId, long switchId) {
+		HashMap <Integer,Integer> ret = null;
+		
+		try {
+			ret = dbQuery.sqlGetVirtualPortLinkMapping(sliceId,switchId);
+//			System.out.println("Slice: " + sliceId + " Switch: " + Long.toHexString(switchId) + " LinkMap: " + ret);
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
+		
+		return ret;
+	}
+	
+/**
+ * @name searchFlowMod
+ * @authors roberto.doriguzzi matteo.gerola
+ * @info Looks for the original flowMod sent by the controller with buffer_id=-1
+ * @param OFMatch match = match of the packet_in message  
+ * @return ret = the original flowMod 
+ */
+//	public FVFlowMod searchFlowMod(OFMatch match) {
+//		FVFlowMod ret = null;
+//		
+//		for(Entry<OFMatch,FVFlowMod> entry: flowModMap.entrySet()){
+//			if(entry.getKey().subsumes(match))
+//				return entry.getValue();
+//		}
+//		
+//		
+//		return ret;
+//	}
+//	
+	
+/**
+ * @name saveFlowMatch
+ * @authors roberto.doriguzzi matteo.gerola
+ * @info When a flow enters a virtual link, we save its match, the linkID, the DPID of the other endpoint of the link plus the output port
+ * @param String sliceId, long switchId, OFMatch match, short linkId
+ * @return boolean = TRUE if we find the remote endpoint, FALSE otherwise 
+ */
+	public boolean saveFlowMatch(String sliceId, long switchId, OFMatch match, short linkId) {
+		List <Object> ret = null;
+		
+		try {
+			ret = dbQuery.sqlGetRemoteEndPoint(sliceId,switchId,linkId);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		if(ret == null) return false;
+		else {
+			vt_hashmap.updateMatchTable(match, ret, VTHashMap.ACTION.ADD.ordinal());
+			return true;
+		}
+		
+	}
+/**
+ * @name cleanFlowMatchTable
+ * @authors roberto.doriguzzi matteo.gerola
+ * @info Removes the match entries from all middlepoints of virtual link "linkId"
+ * @param String sliceId, long switchId, OFMatch match, short linkId
+ * @return void
+ */
+	public void cleanFlowMatchTable(String sliceId, long switchId, OFMatch match, short linkId) {
+		 
+		 // deleting the entries for the switch which sent the flow removed message
+		 List<Object> info = new LinkedList<Object>();
+		 info.add((Object)Long.valueOf(switchId));  //middlePoint switchId
+		 info.add((Object)Integer.valueOf(linkId)); //linkId
+		 vt_hashmap.updateMatchTable(match, info, VTHashMap.ACTION.DELETE.ordinal());
+	}
+
+			
+	public boolean ManageVLinkLLDP(String sliceId, long switchId, Integer virtPortId, byte[] bs) {
 		boolean ret = true;
 		try {
-			ret = dbQuery.sqlManageVLinkLLDP(sliceId, switchId, bs, this);
+			ret = dbQuery.sqlManageVLinkLLDP(sliceId, switchId, virtPortId, bs);
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

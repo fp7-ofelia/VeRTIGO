@@ -1119,11 +1119,10 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 			}
 
 			// Find new linkId
-			int linkId=0;
+
 			VTConfigInterface vtConfig = new VTConfigInterface();
-			boolean resCode = vtConfig.GetNewLinkId(sliceName, linkString);
-			if (resCode == false) linkId = 1;
-			else linkId = vtConfig.linkId;
+			short linkId = vtConfig.GetNewLinkId(sliceName, linkString);
+			if (linkId == 0) return false;
 			
 			VTLink vtLink = new VTLink(linkId);
 			

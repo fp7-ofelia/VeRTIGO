@@ -33,8 +33,8 @@ public class FVActionDataLayerDestination extends OFActionDataLayerDestination
 			FVClassifier fvClassifier, FVSlicer fvSlicer)
 			throws ActionDisallowedException {
 		// TODO Auto-generated method stub
-		FVLog.log(LogLevel.CRIT, fvSlicer,
-				"action slicing unimplemented for type: " + this);
+//		FVLog.log(LogLevel.CRIT, fvSlicer,
+//				"action slicing unimplemented for type: " + this);
 		approvedActions.add(this);
 	}
 

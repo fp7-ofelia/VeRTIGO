@@ -432,7 +432,7 @@ public class FVClassifier implements FVEventHandler, FVSendMsg {
 								// port status update
 								if(m.getType() == OFType.PORT_STATUS) {
 									this.storeStats.updatePortInfo(m);
-								}
+							}
 								
 						//END VERTIGO
 								classifyOFMessage(m);

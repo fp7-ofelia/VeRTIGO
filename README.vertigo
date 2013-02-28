@@ -47,21 +47,23 @@ Most significant classes are:
 VTConfigInterface: 	is the class which manages the configuration of the VTs
 			and is used by the other modules (like PortMapper and
 			LinkBroker) to correctly manage the virtual elements
-			included in the VT.
+			included in the VT. I represents a unified interface to
+			access both VTHashMap and VTSqlDb 
 VTSqlDb:		stores the configuration of virtual elements for each
 			virtual topology such as virtual links and virtual
-			ports. It is also used to keep track of flows crossing
+			ports. 
+VTHashMap		It is used to keep track of flows crossing
 			virtual links, i.e. it stores the association between
 			flow_matches and virtual link IDs. 
 			These entries are used to identify the virtual link 
-			crossed by a flow when the flow arrives to the next hop.
+			crossed by a flow when the flow arrives at the next hop.
+			This class also install static entries on middlepoints
+			switches of virtual links. In this way, those switches
+			are hidden to the controller.
 VTPortMapper:		intercepts both messages from switches to controllers
 			(e.g. packet_in) and from controllers to switches (e.g.
 			stats requests, packet_out, flow_mod) and rewrites the
-			port numbers values. 
-VTLinkBroker:		generates and sends flow_mod and packet_out messages to 
-			those switches that are intermediate points of virtual
-			links and that must be hidden to the controllers.	
+			port numbers values.	
 VTEvent			Handles the changes of status (up/down) of physical
 			ports when virtual links are involved
 VTLLDPEvent		Event handler that manages LLDP messages through virtual
@@ -96,7 +98,8 @@ NOTES ON INSTALLATION
 1. Some of Scripts in scripts/ have been modified from the
 original FlowVisor version in order to support the additional
 libraries required by VeRTIGO, i.e. mysql-connector-java-5.1.15-bin.jar and
-hsqldb.jar (both in /lib/). 
+hsqldb.jar (both in /lib/). These modified scripts are also responsible of the
+installation of vertigo, vectl and veconfig scripts.
 2. VeRTIGO needs a patched version of openflow.jar which has been added in
 /lib/ (see post at
 https://mailman.stanford.edu/pipermail/openflow-discuss/2012-February/002997.
@@ -108,7 +111,7 @@ INITIAL CONFIGURATION
 As for FlowVisor, the VeRTIGO configuration process starts with the generation
 of the base configuration file through the command:
 
-/usr/local/sbin/fvconfig generate config.xml
+veconfig generate config.xml
 
 The initial config file contains some sample VTs and flow definitions. These
 must be removed before VeRTIGO can be used. In order to make the required
