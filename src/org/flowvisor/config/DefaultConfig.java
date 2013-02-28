@@ -2,7 +2,7 @@ package org.flowvisor.config;
 
 import java.io.FileNotFoundException;
 
-import org.flowvisor.FlowVisor;
+import org.flowvisor.VeRTIGO;
 import org.flowvisor.api.APIServer;
 import org.flowvisor.api.JettyServer;
 import org.flowvisor.exceptions.DuplicateControllerException;
@@ -67,7 +67,7 @@ public class DefaultConfig {
 					.getDefaultPort());
 			FVConfig.setInt(FVConfig.API_JETTY_WEBSERVER_PORT, JettyServer.default_jetty_port);
 			FVConfig.setString(FVConfig.VERSION_STR,
-					FlowVisor.FLOWVISOR_VERSION);
+					VeRTIGO.FLOWVISOR_VERSION);
 			FVConfig.setInt(FVConfig.CONFIG_VERSION_STR,
 					FVConfig.CONFIG_VERSION);
 			// checkpointing on by default

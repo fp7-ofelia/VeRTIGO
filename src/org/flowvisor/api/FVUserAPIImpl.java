@@ -6,15 +6,18 @@ package org.flowvisor.api;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.SQLException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import org.flowvisor.FlowVisor;
+import org.flowvisor.VeRTIGO;
 import org.flowvisor.api.FlowChange.FlowChangeOp;
 import org.flowvisor.classifier.FVClassifier;
 import org.flowvisor.config.BracketParse;
@@ -46,6 +49,8 @@ import org.flowvisor.vtopology.topology_configurator.VTConfigInterface;
 import org.flowvisor.vtopology.topology_configurator.VTHop;
 import org.flowvisor.vtopology.topology_configurator.VTLink;
 import org.flowvisor.vtopology.topology_configurator.VTSlice;
+import org.flowvisor.vtopology.vtstatistics.VTStatsDb;
+import org.flowvisor.vtopology.vtstatistics.VTStatsUtils;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.util.HexString;
@@ -74,7 +79,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 	 */
 	public String ping(String arg) {
 		String user = APIUserCred.getUserName();
-		return "PONG(" + user + "): FV version=" + FlowVisor.FLOWVISOR_VERSION
+		return "PONG(" + user + "): FV version=" + VeRTIGO.FLOWVISOR_VERSION
 				+ "::" + arg;
 	}
 
@@ -159,7 +164,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 
 		FVConfig.createSlice(sliceName, list[1], controller_port, passwd,
 				slice_email, APIUserCred.getUserName());
-		FlowVisor.getInstance().checkPointConfig();
+		VeRTIGO.getInstance().checkPointConfig();
 		return true;
 	}
 
@@ -186,7 +191,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 		sliceName = FVConfig.sanitize(sliceName);
 		// set passwd is synchronized
 		FVConfig.setPasswd(sliceName, salt, crypt);
-		FlowVisor.getInstance().checkPointConfig();
+		VeRTIGO.getInstance().checkPointConfig();
 		return true;
 	}
 
@@ -231,7 +236,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 				throw new InvalidUserInfoKey("invalid key: " + key
 						+ "-- only contact_email and "
 						+ "controller_{hostname,port} can be changed");
-			FlowVisor.getInstance().checkPointConfig();
+			VeRTIGO.getInstance().checkPointConfig();
 		} catch (ConfigError e) {
 			// this should probably never happen b/c of above checks
 			throw new InvalidUserInfoKey(e.toString());
@@ -319,7 +324,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 	public List<String> listDevices() {
 		FVLog.log(LogLevel.DEBUG, null,
 				"API listDevices() by: " + APIUserCred.getUserName());
-		FlowVisor fv = FlowVisor.getInstance();
+		VeRTIGO fv = VeRTIGO.getInstance();
 		// get list from main flowvisor instance
 		List<String> dpids = new ArrayList<String>();
 		String dpidStr;
@@ -364,7 +369,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 		Map<String, String> map = new HashMap<String, String>();
 		long dpid = HexString.toLong(dpidStr);
 		FVClassifier fvClassifier = null;
-		for (FVEventHandler handler : FlowVisor.getInstance().getHandlersCopy()) {
+		for (FVEventHandler handler : VeRTIGO.getInstance().getHandlersCopy()) {
 			if (handler instanceof FVClassifier) {
 				OFFeaturesReply featuresReply = ((FVClassifier) handler)
 						.getSwitchInfo();
@@ -428,7 +433,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 			FlowSpaceUtil.deleteFlowSpaceBySlice(sliceName);
 			FVConfig.sendUpdates(FVConfig.FLOWSPACE);
 			// signal that FS has changed
-			FlowVisor.getInstance().checkPointConfig();
+			VeRTIGO.getInstance().checkPointConfig();
 			
 			/**
 			 * @authors roberto.doriguzzi matteo.gerola
@@ -495,7 +500,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 				FVLog.log(LogLevel.INFO, null, logMsg);
 			}
 			// update the indexes at the end, not with each rule
-			FlowVisor.getInstance().checkPointConfig();
+			VeRTIGO.getInstance().checkPointConfig();
 			FVLog.log(LogLevel.INFO, null,
 					"Signalling FlowSpace Update to all event handlers");
 			FVConfig.sendUpdates(FVConfig.FLOWSPACE); // signal that FS has
@@ -563,7 +568,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 
 		// TODO: come back an architect this so we can walk the list of slicers,
 		// not the list of classifiers, and then slicers
-		for (Iterator<FVEventHandler> it = FlowVisor.getInstance()
+		for (Iterator<FVEventHandler> it = VeRTIGO.getInstance()
 				.getHandlersCopy().iterator(); it.hasNext();) {
 			FVEventHandler eventHandler = it.next();
 			if (eventHandler instanceof FVClassifier) {
@@ -650,7 +655,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 		// this is synchronized against FVConfig
 		FVConfig.setConfig(nodeName, value);
 		FVConfig.sendUpdates(nodeName);
-		FlowVisor.getInstance().checkPointConfig();
+		VeRTIGO.getInstance().checkPointConfig();
 		FVLog.log(LogLevel.DEBUG, null, "setConfig for user " + user
 				+ " on config " + nodeName + " to " + value);
 
@@ -706,7 +711,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 		}
 
 		FVSlicer fvSlicer = null;
-		for (Iterator<FVEventHandler> it = FlowVisor.getInstance()
+		for (Iterator<FVEventHandler> it = VeRTIGO.getInstance()
 				.getHandlersCopy().iterator(); it.hasNext();) {
 			FVEventHandler eventHandler = it.next();
 			if (eventHandler instanceof FVClassifier) {
@@ -731,7 +736,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 	public String getSwitchStats(String dpidStr) throws DPIDNotFound,
 			PermissionDeniedException {
 		long dpid = FlowSpaceUtil.parseDPID(dpidStr);
-		for (Iterator<FVEventHandler> it = FlowVisor.getInstance()
+		for (Iterator<FVEventHandler> it = VeRTIGO.getInstance()
 				.getHandlersCopy().iterator(); it.hasNext();) {
 			FVEventHandler eventHandler = it.next();
 			if (eventHandler instanceof FVClassifier) {
@@ -749,7 +754,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 		boolean found = false;
 		long dpid = FlowSpaceUtil.parseDPID(dpidStr);
 		List<Map<String, String>> ret = new LinkedList<Map<String, String>>();
-		for (Iterator<FVEventHandler> it = FlowVisor.getInstance()
+		for (Iterator<FVEventHandler> it = VeRTIGO.getInstance()
 				.getHandlersCopy().iterator(); it.hasNext();) {
 			FVEventHandler eventHandler = it.next();
 			if (eventHandler instanceof FVClassifier) {
@@ -821,7 +826,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 	 * @throws DPIDNotFound
 	 */
 	private FVClassifier lookupClassifier(long dpid) throws DPIDNotFound {
-		for (Iterator<FVEventHandler> it = FlowVisor.getInstance()
+		for (Iterator<FVEventHandler> it = VeRTIGO.getInstance()
 				.getHandlersCopy().iterator(); it.hasNext();) {
 			FVEventHandler eventHandler = it.next();
 			if (eventHandler instanceof FVClassifier) {
@@ -835,6 +840,242 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 
 
 	/**
+	 * @name enableVTPlannerStats
+	 * @authors roberto.doriguzzi matteo.gerola
+
+	 */
+	public boolean enableVTPlannerStats(String enable) 
+	throws PermissionDeniedException{
+		
+		synchronized (FVConfig.class) {
+			FVConfig.enableVTPlannerStats(enable);
+			VeRTIGO.getInstance().checkPointConfig();
+		}
+		return true;
+	}
+	
+	/**
+	 * @name setVTPlannerTimers
+	 * @authors roberto.doriguzzi matteo.gerola
+
+	 */
+	public boolean setVTPlannerTimers(String timer, String expiration) 
+	throws PermissionDeniedException{
+		VTStatsDb statsDb = VTStatsDb.getInstance();
+		Long long_timer = statsDb.sqlDbGetTimer();
+		Long long_expiration = statsDb.sqlDbGetExpirationTime();
+		
+		try {
+			statsDb.sqlDbInit();
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		// parse the values
+		try{
+			if(timer.endsWith("s")) long_timer = Long.parseLong(timer.replace("s",""));
+			else if(timer.endsWith("m")) long_timer = Long.parseLong(timer.replace("m",""))*60;
+			else if(timer.endsWith("h")) long_timer = Long.parseLong(timer.replace("h",""))*3600;
+			else if(timer.endsWith("d")) long_timer = Long.parseLong(timer.replace("d",""))*86400;
+			else if(timer.endsWith("w")) long_timer = Long.parseLong(timer.replace("w",""))*604800;
+			else long_timer = Long.parseLong(timer);
+			
+			if(expiration.endsWith("s")) long_expiration = Long.parseLong(expiration.replace("s",""));
+			else if(expiration.endsWith("m")) long_expiration = Long.parseLong(expiration.replace("m",""))*60;
+			else if(expiration.endsWith("h")) long_expiration = Long.parseLong(expiration.replace("h",""))*3600;
+			else if(expiration.endsWith("d")) long_expiration = Long.parseLong(expiration.replace("d",""))*86400;
+			else if(expiration.endsWith("w")) long_expiration = Long.parseLong(expiration.replace("w",""))*604800;
+			else long_expiration = Long.parseLong(expiration);
+		}  catch (NumberFormatException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		// set the new timers into the statistic database
+		statsDb.sqlDbSetTimer(long_timer*1000);
+		statsDb.sqlDbSetExpirationTime(long_expiration*1000);
+		
+		
+		// apply the new timers to each classifier
+		ArrayList <FVEventHandler> fvHandlersList = VeRTIGO.getInstance().getHandlersCopy();
+		for(FVEventHandler handler: fvHandlersList){ // looking for the handler with DPID
+			if(handler.getName().contains("classifier")){
+				((FVClassifier)handler).rescheduleVTStatistics();
+			}
+		}
+		
+		// save the new values to the configuration file
+		synchronized (FVConfig.class) {
+			FVConfig.setVTPlannerStatsTimers(timer, expiration);
+			VeRTIGO.getInstance().checkPointConfig();
+		}
+		return true;
+	}
+	
+	/**
+	 * @name getVTPlannerTimers
+	 * @authors roberto.doriguzzi matteo.gerola
+
+	 */
+	public Collection<String> getVTPlannerTimers() 
+	throws PermissionDeniedException{
+		List<String> statsRecord = new LinkedList<String>();
+		
+		statsRecord.add("\nVTPlanner Statistics Timers (s=seconds, m=minutes, h=hours, d=days, w=weeks)");
+		
+		try {
+			statsRecord.add("\nSampling period: " + FVConfig.getString(FVConfig.VTPLANNER_STATS_TIMER));
+			statsRecord.add("Expiration time: " + FVConfig.getString(FVConfig.VTPLANNER_STATS_EXPIR));
+		} catch (ConfigError e) {
+			return null;
+		}
+		
+		return statsRecord;
+	}
+	
+	/**
+	 * @name getVTPlannerPortStats
+	 * @description gets Port stats within a specified slot of time
+	 * @authors roberto.doriguzzi matteo.gerola
+
+	 */
+	
+	@Override
+	public Collection<String> getVTPlannerPortStats(String switchId, String port, String datetime1, String datetime2) 
+	throws RuntimeException, ConfigError {
+		List<String> statsRecord = new LinkedList<String>();
+		
+		statsRecord.add("\nSWITCH_ID: " + switchId + " PORT_NUMBER: " + port + "\n");
+		statsRecord.add("TIME\t\t\t\t\tBYTES_RX\t\tBYTES_TX\t\tPACKETS_RX\t\tPACKETS_TX");
+		
+		VTStatsUtils su = new VTStatsUtils();
+
+		if(su.VTGetPortStats(switchId, port, datetime1, datetime2)){
+			for(int i=0; i<su.pStats.counter;i++) {
+				Date date = new Date(su.pStats.timeStamp.get(i));
+				statsRecord.add(date.toString() + "\t\t" + String.format("%010d",su.pStats.rxBytes.get(i)) + "\t\t" + 
+														   String.format("%010d",su.pStats.txBytes.get(i)) + "\t\t" + 
+														   String.format("%010d",su.pStats.rxPackets.get(i)) + "\t\t" + 
+														   String.format("%010d",su.pStats.txPackets.get(i)));
+				
+			}
+		}
+		
+		return statsRecord;
+	}
+	
+	/**
+	 * @name getVTPlannerQueueStats
+	 * @description gets Queue stats within a specified slot of time
+	 * @authors roberto.doriguzzi matteo.gerola
+
+	 */
+	
+	@Override
+	public Collection<String> getVTPlannerQueueStats(String switchId, String port, String queue, String datetime1, String datetime2) 
+	throws RuntimeException, ConfigError {
+		List<String> statsRecord = new LinkedList<String>();
+		
+		statsRecord.add("\nSWITCH_ID: " + switchId + " PORT_NUMBER: " + port + " QUEUE_ID: " + queue + "\n");
+		statsRecord.add("TIME\t\t\t\t\tBYTES_TX\t\tPACKETS_TX\t\tERRORS_TX");
+		
+		VTStatsUtils su = new VTStatsUtils();
+
+		if(su.VTGetQueueStats(switchId, port, queue, datetime1, datetime2)){
+			for(int i=0; i<su.qStats.counter;i++) {
+				Date date = new Date(su.qStats.timeStamp.get(i));
+				statsRecord.add(date.toString() + "\t\t" + String.format("%010d",su.qStats.txBytes.get(i)) + "\t\t" + 
+														   String.format("%010d",su.qStats.txPackets.get(i)) + "\t\t" + 
+														   String.format("%010d",su.qStats.txErrors.get(i)));
+				
+			}
+		}
+		
+		return statsRecord;
+	}
+	
+	/**
+	 * @name getVTPlannerPortInfo
+	 * @description gets Port info. 
+	 * @authors roberto.doriguzzi matteo.gerola
+
+	 */
+	
+	@Override
+	public Collection<String> getVTPlannerPortInfo(String switchId, String port) 
+	throws RuntimeException, ConfigError {
+		List<String> infoRecord = new LinkedList<String>();
+		
+		infoRecord.add("\nSWITCH_ID: " + switchId + " PORT NUMBER: " + port + "\n");
+		infoRecord.add("PORT\t\tCONFIG\t\tFEATURES\tSTATE");
+		
+		VTStatsUtils su = new VTStatsUtils();
+		if(su.VTGetPortInfo(switchId, port)){
+			for(int i=0; i<su.pInfo.counter;i++) {
+				infoRecord.add(su.pInfo.phyPortId.get(i) + "\t\t" + 
+								"0x" + Integer.toHexString(su.pInfo.portConfig.get(i)) + "\t\t" + 
+								"0x" + Integer.toHexString(su.pInfo.portFeatures.get(i)) + "\t\t" + 
+								"0x" + Integer.toHexString(su.pInfo.portState.get(i)));
+				
+			}
+		}
+
+		
+		return infoRecord;
+	}
+	
+	/**
+	 * @name getVTPlannerSwitchInfo
+	 * @description gets Switch info. 
+	 * @authors roberto.doriguzzi matteo.gerola
+
+	 */
+	
+	@Override
+	public Collection<String> getVTPlannerSwitchInfo(String switchId) 
+	throws RuntimeException, ConfigError {
+		int maxLength = 23; // DPID string length
+		List<String> infoRecord = new LinkedList<String>();
+		
+		VTStatsUtils su = new VTStatsUtils();
+		if(su.VTGetSwitchInfo(switchId)){
+			
+			for(int i=0; i<su.sInfo.counter;i++) {
+				if(su.sInfo.Manufacturer.get(i).length() > maxLength) maxLength = su.sInfo.Manufacturer.get(i).length();
+				if(su.sInfo.serialNumber.get(i).length() > maxLength) maxLength = su.sInfo.serialNumber.get(i).length();
+				if(su.sInfo.datapathDescription.get(i).length() > maxLength) maxLength = su.sInfo.datapathDescription.get(i).length();
+			}
+			maxLength+=2; //additional spaces for the largest column 
+			
+			infoRecord.add("\nDATAPATH_ID" + VTStatsUtils.fillString(' ', maxLength-String.format("DATAPATH_ID").length()) + 
+						   "DPATH_DESCRIPTION" + VTStatsUtils.fillString(' ', maxLength-String.format("DPATH_DESCRIPTION").length()) +
+						   "MANUFACTURER" + VTStatsUtils.fillString(' ', maxLength-String.format("MANUFACTURER").length()) + 
+						   "SERIAL_NUMBER" + VTStatsUtils.fillString(' ', maxLength-String.format("SERIAL_NUMBER").length()) + 
+						   "CAPABILITIES" + VTStatsUtils.fillString(' ', maxLength-String.format("CAPABILITIES").length()) + 
+						   "OF_VERSION" + VTStatsUtils.fillString(' ', maxLength-String.format("OF_VERSION").length()) + 
+						   "PORTS\n");
+			
+			for(int i=0; i<su.sInfo.counter;i++) {
+				infoRecord.add(VTStatsUtils.getStringDPID(su.sInfo.switchId.get(i)) + VTStatsUtils.fillString(' ', maxLength-VTStatsUtils.getStringDPID(su.sInfo.switchId.get(i)).length()) + 
+								su.sInfo.datapathDescription.get(i) + VTStatsUtils.fillString(' ', maxLength-su.sInfo.datapathDescription.get(i).length()) +
+								su.sInfo.Manufacturer.get(i) + VTStatsUtils.fillString(' ', maxLength-su.sInfo.Manufacturer.get(i).length()) + 
+								su.sInfo.serialNumber.get(i) + VTStatsUtils.fillString(' ', maxLength-su.sInfo.serialNumber.get(i).length()) + 
+								Integer.toBinaryString(su.sInfo.capabilities.get(i)) + VTStatsUtils.fillString(' ', maxLength-Integer.toBinaryString(su.sInfo.capabilities.get(i)).length()) + 
+								Integer.toHexString(su.sInfo.ofpVersion.get(i)) + VTStatsUtils.fillString(' ', maxLength-Integer.toHexString(su.sInfo.ofpVersion.get(i)).length()) + 
+								su.sInfo.available_ports.get(i));
+				
+			}
+		}
+
+		
+		return infoRecord;
+	}
+	
+	/**
 	 * @name setDbInfo
 	 * @authors roberto.doriguzzi matteo.gerola
 
@@ -845,11 +1086,11 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 			throw new VTKeyException("Database not allowed");
 			
 		if (!FVConfig.isSupervisor(APIUserCred.getUserName()))
-			throw new PermissionDeniedException("only superusers can set Advisor");
+			throw new PermissionDeniedException("only superusers can configure VeRTIGO");
 
 		synchronized (FVConfig.class) {
 			FVConfig.setDbInfo(dbType, ipAddress, port, user, passwd);
-			FlowVisor.getInstance().checkPointConfig();
+			VeRTIGO.getInstance().checkPointConfig();
 		}
 		return true;
 	}
@@ -903,7 +1144,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 			//Update vtopology database
 			vtConfig.UpdateVirtualLink(sliceName, vtLink, 0);
 			
-			FlowVisor.getInstance().checkPointConfig();
+			VeRTIGO.getInstance().checkPointConfig();
 		}
 		return true;
 	}
@@ -956,7 +1197,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 			VTConfigInterface vtConfig = new VTConfigInterface();
 			vtConfig.UpdateVirtualLink(sliceName, vtLink, 2);
 			
-			FlowVisor.getInstance().checkPointConfig();
+			VeRTIGO.getInstance().checkPointConfig();
 		}
 		return true;
 	}
@@ -1001,7 +1242,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 			VTConfigInterface vtConfig = new VTConfigInterface();
 			vtConfig.UpdateVirtualLink(sliceName, vtLink, 1);
 			
-			FlowVisor.getInstance().checkPointConfig();
+			VeRTIGO.getInstance().checkPointConfig();
 		}
 		return true;
 	}

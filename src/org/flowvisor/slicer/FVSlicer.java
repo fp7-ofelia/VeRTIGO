@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.flowvisor.FlowVisor;
+import org.flowvisor.VeRTIGO;
 import org.flowvisor.classifier.FVClassifier;
 import org.flowvisor.classifier.FVSendMsg;
 import org.flowvisor.config.ConfigError;
@@ -28,6 +28,7 @@ import org.flowvisor.events.FVIOEvent;
 import org.flowvisor.events.OFKeepAlive;
 import org.flowvisor.events.TearDownEvent;
 import org.flowvisor.events.VTEvent;
+import org.flowvisor.events.VTLLDPEvent;
 import org.flowvisor.exceptions.BufferFull;
 import org.flowvisor.exceptions.MalformedOFMessage;
 import org.flowvisor.exceptions.UnhandledEvent;
@@ -49,10 +50,12 @@ import org.flowvisor.vtopology.node_mapper.port_mapper.VTPortMapper;
 import org.flowvisor.vtopology.topology_configurator.VTConfigInterface;
 import org.flowvisor.vtopology.link_broker.*;
 import org.openflow.protocol.OFHello;
+import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFPortStatus;
+import org.openflow.protocol.OFPacketIn.OFPacketInReason;
 import org.openflow.protocol.OFPhysicalPort.OFPortState;
 import org.openflow.protocol.OFPortStatus.OFPortReason;
 import org.openflow.protocol.OFType;
@@ -266,7 +269,7 @@ public class FVSlicer implements FVEventHandler, FVSendMsg {
 			if(this.sliceName != "fvadmin" && from.equals(this.fvClassifier)){ // do not process flows that belong to the "fvadmin" slice
 				VTConfigInterface vt_config = new VTConfigInterface();
 				VTPortMapper port_mapper = new VTPortMapper(msg,vt_config);
-				ArrayList <FVEventHandler> fvHandlersList = FlowVisor.getInstance().getHandlersCopy();
+				ArrayList <FVEventHandler> fvHandlersList = VeRTIGO.getInstance().getHandlersCopy();
 				do {
 					FVClassifier tmpClassifier;
 					tmpClassifier = port_mapper.UpLinkMapping(this, this.sliceName, (FVClassifier)from);
@@ -463,7 +466,10 @@ public class FVSlicer implements FVEventHandler, FVSendMsg {
 		//VeRTIGO
 		else if (e instanceof VTEvent)
 			handleVTEvent((VTEvent) e);
+		else if (e instanceof VTLLDPEvent)
+			handleVTLLDPEvent((VTLLDPEvent) e);
 		//END VeRTIGO
+
 		else if (e instanceof ReconnectEvent){
 			this.reconnectEventScheduled = false;
 			this.reconnect();
@@ -725,7 +731,6 @@ public class FVSlicer implements FVEventHandler, FVSendMsg {
 		int virtPortId = e.virtPortId;
 		int phyPortId = e.phyPortId;
 		int origPortNumber = 0;
-		System.out.println("handleVTEvent");
 		List<OFPhysicalPort> inPortList = this.fvClassifier.getSwitchInfo().getPorts();
 		// port mapping
 		for (OFPhysicalPort inPort: inPortList){
@@ -750,6 +755,27 @@ public class FVSlicer implements FVEventHandler, FVSendMsg {
 				if((int)inPort.getPortNumber() == virtPortId)
 					inPort.setPortNumber((short)origPortNumber);
 			}
+		} catch (BufferFull e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (MalformedOFMessage e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+	}
+	
+	private void handleVTLLDPEvent(VTLLDPEvent e) {
+		FVPacketIn packetIn = new FVPacketIn();
+		packetIn.setPacketData(e.bs);
+		packetIn.setInPort((short)e.virtPortId);
+		packetIn.setReason(OFPacketInReason.NO_MATCH);
+		OFMatch match = new OFMatch();
+		match.loadFromPacket(packetIn.getPacketData(), packetIn.getInPort());
+		try {
+			this.msgStream.testAndWrite(packetIn);
 		} catch (BufferFull e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();

@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.flowvisor.FlowVisor;
+import org.flowvisor.VeRTIGO;
 import org.flowvisor.api.LinkAdvertisement;
 import org.flowvisor.api.TopologyCallback;
 import org.flowvisor.config.ConfigError;
@@ -275,9 +275,9 @@ public class TopologyController extends OFSwitchAcceptor {
 			} catch (ConfigError e1) {
 				throw new RuntimeException(e1);
 			}
-			FlowVisor fv = FlowVisor.getInstance();
-			if (fv != null)
-				fv.checkPointConfig();
+			VeRTIGO ve = VeRTIGO.getInstance();
+			if (ve != null)
+				ve.checkPointConfig();
 			return false;
 		}
 	}

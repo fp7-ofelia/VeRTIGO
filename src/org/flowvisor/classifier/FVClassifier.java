@@ -19,9 +19,11 @@ import org.flowvisor.events.FVEvent;
 import org.flowvisor.events.FVEventHandler;
 import org.flowvisor.events.FVEventLoop;
 import org.flowvisor.events.FVIOEvent;
+import org.flowvisor.events.FVTimerEvent;
 import org.flowvisor.events.OFKeepAlive;
 import org.flowvisor.events.TearDownEvent;
 import org.flowvisor.events.VTEvent;
+import org.flowvisor.events.VTStoreStatisticsEvent;
 import org.flowvisor.exceptions.BufferFull;
 import org.flowvisor.exceptions.MalformedOFMessage;
 import org.flowvisor.exceptions.UnhandledEvent;
@@ -39,6 +41,7 @@ import org.flowvisor.message.Classifiable;
 import org.flowvisor.message.FVError;
 import org.flowvisor.message.FVFlowMod;
 import org.flowvisor.message.FVMessageFactory;
+import org.flowvisor.message.FVMessageUtil;
 import org.flowvisor.message.SanityCheckable;
 import org.flowvisor.message.actions.FVActionOutput;
 import org.flowvisor.slicer.FVSlicer;
@@ -52,10 +55,14 @@ import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPhysicalPort;
 import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFPortStatus;
+import org.openflow.protocol.OFStatisticsReply;
+import org.openflow.protocol.OFStatisticsRequest;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.OFError.OFHelloFailedCode;
 import org.openflow.protocol.OFPortStatus.OFPortReason;
 import org.openflow.protocol.action.OFAction;
+import org.openflow.protocol.statistics.OFDescriptionStatistics;
+import org.openflow.protocol.statistics.OFStatisticsType;
 import org.openflow.util.U16;
 
 /**
@@ -85,10 +92,13 @@ public class FVClassifier implements FVEventHandler, FVSendMsg {
 	Set<Short> activePorts;
 	private final FVMessageFactory factory;
 	OFKeepAlive keepAlive;
+	VTStoreStatisticsEvent storeStats;
 	SendRecvDropStats stats;
 	private FlowDB flowDB;
 	private boolean wantStatsDescHack;
 	String floodPermsSlice; // the slice that has permission to use native
+	
+	private long updatePeriod = 5000; // in milliseconds
 
 	// OFPP_FLOOD
 
@@ -114,6 +124,9 @@ public class FVClassifier implements FVEventHandler, FVSendMsg {
 		this.switchFlowMap = null;
 		this.activePorts = new HashSet<Short>();
 		this.wantStatsDescHack = true;
+		loop.addTimer(new FVTimerEvent(System.currentTimeMillis()
+				+ this.updatePeriod, this, this, null));
+		
 		FVConfig.watch(this, FVConfig.FLOW_TRACKING);
 		updateFlowTrackingConfig();
 	}
@@ -320,8 +333,15 @@ public class FVClassifier implements FVEventHandler, FVSendMsg {
 		else if (e instanceof TearDownEvent)
 			this.tearDown();
 		//VeRTIGO
+		else if (e instanceof VTStoreStatisticsEvent)
+			handleVTStatistics(e);
 		else if (e instanceof VTEvent)
 			handleVTEvent((VTEvent) e);
+		else if (e instanceof FVTimerEvent){
+			// Schedule next event
+			loop.addTimer(new FVTimerEvent(System.currentTimeMillis()
+					+ this.updatePeriod, this, this, null));
+		}
 		//END VERTIGO
 		else
 			throw new UnhandledEvent(e);
@@ -400,7 +420,26 @@ public class FVClassifier implements FVEventHandler, FVSendMsg {
 							continue;
 						}
 						if (switchInfo != null) {
+							//VERTIGO
+							
+							//this is a stats reply for the VTStoreStatistics event handler
+							XidPair pair = xidTranslator.untranslate(m.getXid());
+							//System.out.println("--------- pair: " + pair + "OFType:" + m.getType());
+							if(pair == null && m.getXid() == this.storeStats.stats_xid && m.getType() == OFType.STATS_REPLY) {
+								this.storeStats.storeStatistics(m);
+								this.dropMsg(m, this);
+								return;
+							}
+							
+							// port status update
+							if(m.getType() == OFType.PORT_STATUS) {
+								this.storeStats.updatePortInfo(m);
+							}
+							
+							//END VERTIGO
+							
 							classifyOFMessage(m);
+							
 							// mark this channel as still alive
 							this.keepAlive.registerPong();
 						} else
@@ -507,10 +546,6 @@ public class FVClassifier implements FVEventHandler, FVSendMsg {
 			break;
 		case FEATURES_REPLY:
 			this.setSwitchInfo((OFFeaturesReply) m);
-			/*
-			 * OFStatisticsRequest stats = new OFStatisticsRequest();
-			 * stats.setStatisticType(OFStatisticsType.DESC);
-			 */
 			switchName = "dpid=" + FlowSpaceUtil.dpidToString(this.getDPID());
 			FVLog.log(LogLevel.INFO, this, "identified switch as " + switchName
 					+ " on " + this.sock);
@@ -518,6 +553,13 @@ public class FVClassifier implements FVEventHandler, FVSendMsg {
 			this.connectToControllers(); // connect to controllers
 			doneID = true;
 			updateFloodPerms();
+			
+			//VERTIGO
+			//scheduling stats requests description
+			this.storeStats = new VTStoreStatisticsEvent(this, this, loop);
+			this.storeStats.sendDescStatsRequest();
+			this.storeStats.scheduleNextCheck();
+			//END VERTIGO
 			break;
 		default:
 			FVLog.log(LogLevel.WARN, this, "Got unknown message type " + m
@@ -730,12 +772,22 @@ public class FVClassifier implements FVEventHandler, FVSendMsg {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
+		}	
+		
+	}
+	
+	private void handleVTStatistics(FVEvent e) {
+		try {
+			if(FVConfig.getInt(FVConfig.ENABLE_VTPLANNER_STATS) != 0) {
+				this.storeStats.sendStatsRequest();
+			}
+			this.storeStats.scheduleNextCheck();
+		} catch (ConfigError e1) {
 		}
-		
-		
-
-		
-		
+	}
+	
+	public void rescheduleVTStatistics() {
+		this.storeStats.rescheduleNextCheck();
 	}
 	//END VeRTIGO
 }

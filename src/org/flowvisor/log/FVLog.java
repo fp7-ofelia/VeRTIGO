@@ -3,7 +3,7 @@
  */
 package org.flowvisor.log;
 
-import org.flowvisor.FlowVisor;
+import org.flowvisor.VeRTIGO;
 import org.flowvisor.config.ConfigError;
 import org.flowvisor.config.FVConfig;
 import org.flowvisor.events.FVEventHandler;
@@ -84,7 +84,7 @@ public class FVLog {
 		}
 		System.err.println("--- Setting logging level to " + threshold);
 		if (needConfigFlush) {
-			FlowVisor fv = FlowVisor.getInstance();
+			VeRTIGO fv = VeRTIGO.getInstance();
 			if (fv != null)
 				fv.checkPointConfig();
 		}

@@ -5,7 +5,7 @@ package org.flowvisor.message.lldp;
 
 import java.nio.ByteBuffer;
 
-import org.flowvisor.FlowVisor;
+import org.flowvisor.VeRTIGO;
 import org.flowvisor.classifier.FVClassifier;
 import org.flowvisor.log.FVLog;
 import org.flowvisor.log.LogLevel;
@@ -43,7 +43,7 @@ public class LLDPUtil {
 			FVClassifier fvClassifier, FVSlicer fvSlicer) {
 		if (!LLDPCheck(po.getPacketData()))
 			return false;
-		String fvName = FlowVisor.getInstance().getInstanceName();
+		String fvName = VeRTIGO.getInstance().getInstanceName();
 		/**
 		 * This is a hack to ensure that the resulting lldp packet is larger
 		 * than 60: #133

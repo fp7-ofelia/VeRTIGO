@@ -4,7 +4,7 @@ import java.io.FileNotFoundException;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.flowvisor.FlowVisor;
+import org.flowvisor.VeRTIGO;
 import org.flowvisor.api.LinkAdvertisement;
 import org.flowvisor.classifier.FVClassifier;
 import org.flowvisor.config.FVConfig;
@@ -106,7 +106,7 @@ public class FVPacketIn extends OFPacketIn implements Classifiable, Slicable,
 
 	private void sendDropRule(FVClassifier fvClassifier, FlowEntry flowEntry,
 			short hardTimeout, short idleTimeout) {
-		FVFlowMod flowMod = (FVFlowMod) FlowVisor.getInstance().getFactory()
+		FVFlowMod flowMod = (FVFlowMod) VeRTIGO.getInstance().getFactory()
 				.getMessage(OFType.FLOW_MOD);
 		// block this exact flow
 		OFMatch match = new OFMatch();

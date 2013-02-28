@@ -24,18 +24,18 @@
 #----------------------------------------------------------------------
 
 ### BEGIN INIT INFO
-# Provides:          flowvisor
+# Provides:          vertigo
 # Required-Start:    $remote_fs $syslog
 # Required-Stop:     $remote_fs $syslog
 # Should-Start:      
 # Default-Start:     2 3 4 5
 # Default-Stop:      1
-# Short-Description: FlowVisor
-# Description:       FlowVisor is a special purpose OpenFlow controller that acts as a transparent proxy between OpenFlow switches and multiple OpenFlow controllers.
+# Short-Description: VeRTIGO
+# Description:       VeRTIGO is a special purpose OpenFlow controller that extends FlowVisor to provide a full network virtualization architecture.
 ### END INIT INFO
 
 FV_USER=FVUSER
-FV_CONFIG=PREFIX/etc/flowvisor/config.xml
+FV_CONFIG=PREFIX/etc/vertigo/config.xml
 
 ## abend 
 # 
@@ -55,16 +55,16 @@ start)
       echo File \"$FV_CONFIG\" not found >&2
   fi
 
-  sudo -u $FV_USER PREFIX/sbin/flowvisor $FV_CONFIG >> /var/log/flowvisor/flowvisor-stderr.log 2>&1 &
+  sudo -u $FV_USER PREFIX/sbin/vertigo $FV_CONFIG >> /var/log/vertigo/vertigo-stderr.log 2>&1 &
   ;;
 
 stop)
-  sudo -u $FV_USER pkill -f "org.flowvisor.FlowVisor $FV_CONFIG"
+  sudo -u $FV_USER pkill -f "org.flowvisor.VeRTIGO $FV_CONFIG"
   ;;
 
 restart)
   $0 stop
-  echo Sleeping a bit to let FlowVisor shutdown
+  echo Sleeping a bit to let VeRTIGO shutdown
   sleep 1
   $0 start
   ;;

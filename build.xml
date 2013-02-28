@@ -17,8 +17,8 @@
     <property name="fv_tests" location="src.tests"/>
     <property name="fv_build" location="build/"/>
     <property name="fv_test_build" location="build.tests/"/>
-    <property name="fv_main" location="org.flowvisor.Flowvisor"/>
-    <property name="fv_jar" location="${dist}/flowvisor.jar"/>
+    <property name="fv_main" location="org.flowvisor.VeRTIGO"/>
+    <property name="fv_jar" location="${dist}/vertigo.jar"/>
 
     <target name="init">
         <!-- Create the time stamp -->
@@ -47,7 +47,7 @@
         <!-- Put everything in ${fv_build} into the ${fv_jar} file -->
         <jar destfile="${fv_jar}" filesetmanifest="mergewithoutmain">
             <manifest>
-                <attribute name="Main-Class" value="org.flowvisor.FlowVisor"/>
+                <attribute name="Main-Class" value="org.flowvisor.VeRTIGO"/>
                 <attribute name="Class-Path" value="${fv_classpath}"/>
             </manifest>
             <fileset dir="${fv_build}"/>

@@ -79,7 +79,7 @@ public class FVTimer {
 	 *            the id of the timer as returned by FVTimerEvent.getID()
 	 * @return true if found and removed, else false
 	 */
-	boolean removeTimer(int id) {
+	public boolean removeTimer(int id) {
 		FVTimerEvent e;
 		Iterator<FVTimerEvent> it = pq.iterator();
 		for (e = it.next(); it.hasNext(); e = it.next()) {

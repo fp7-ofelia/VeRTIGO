@@ -13,9 +13,9 @@ if [ -z $configbase ] ; then
     config_dir=$configbase
     SSL_KEYSTORE=$configbase/mySSLKeyStore
 else
-    install_dir=$install_root$configbase/libexec/flowvisor
+    install_dir=$install_root$configbase/libexec/vertigo
     jars=$install_dir
-    config_dir=$install_root$configbase/etc/flowvisor
+    config_dir=$install_root$configbase/etc/vertigo
     SSL_KEYSTORE=$config_dir/mySSLKeyStore
 fi
 
@@ -44,7 +44,7 @@ $jars/json-org.jar:\
 $jars/hsqldb.jar:\
 $jars/mysql-connector-java-5.1.15-bin.jar:\
 $jars/servlet-api-2.5.jar:\
-$install_dir/flowvisor.jar
+$install_dir/vertigo.jar
 
 # ssl options for the jvm
 

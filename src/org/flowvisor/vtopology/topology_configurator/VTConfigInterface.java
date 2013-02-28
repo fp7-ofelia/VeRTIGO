@@ -8,7 +8,11 @@ import java.util.HashMap;
 import java.util.LinkedList;
 
 import org.flowvisor.config.ConfigError;
+import org.flowvisor.message.FVFlowMod;
+import org.flowvisor.message.FVPacketOut;
 import org.openflow.protocol.OFMatch;
+import org.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFType;
 /**
  * @name VTConfigInterface
  * @authors roberto.doriguzzi, matteo.gerola
@@ -35,7 +39,7 @@ public class VTConfigInterface {
 	
 /**
  * @name Constructor
- * @info This function initialises the interface variables and the database
+ * @info This function initializes the interface variables and the database
  * @authors roberto.doriguzzi matteo.gerola
  */
 	public VTConfigInterface(){
@@ -149,6 +153,28 @@ public class VTConfigInterface {
 		return ret;
 	}	
 	
+/**
+ * @name GetLinkId
+ * @authors roberto.doriguzzi matteo.gerola
+ * @info Returns the identifier of the virtual link crossed by the flow.  
+ * @param String sliceId = name of the slice
+ * @param long switchId = dpid of the switch
+ * @param String flowMatch = packet match
+ * @return ret = the virtual link identifier  
+ */
+	public boolean GetLinkId(String sliceId, long switchId, String flowMatch, int inputPort) {
+		boolean ret=false;
+		try {
+			linkId = dbQuery.sqlDbGetLinkId(sliceId, switchId,flowMatch, inputPort, this);
+			ret = true;
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			ret = false;
+		}		
+		return ret;
+	}	
+	
 	
 /**
  * @name GetSwitchInfo
@@ -158,8 +184,7 @@ public class VTConfigInterface {
  * It also returns informations about the switch position in the link (endPoint, if not => send pkt to the link_broker)
  * @param String sliceId = name of the slice
  * @param long switchId = dpid of the switch
- * @param String flowMatch = packet match (L2+L3)
- * @param phyPortList = list of the physical ports of the switch in this slice
+ * @param String flowMatch = packet match
  * @return isEndPoint = TRUE if the switch is an end point, FALSE otherwise
  * @return phyToVirtPortMap = mapping between physical and virtual ports (only if isEnd Point == TRUE)
  * @return phyPortId = physical output port (only if isEnd Point == FALSE)
@@ -185,18 +210,30 @@ public class VTConfigInterface {
  * @param String sliceId = name of the slice
  * @param long switchId = dpid of the switch
  * @param String flowMatch = packet match (L2+L3) 
+ * @param int priority = flow entry priority (only for flow_mod messages)
  * @param virtPortId = input virtual port
  * @param virtPortList = list of the output virtual ports of the switch in this slice
  * @return phyPortId = input physical port     
  * @return virtToPhyPortMap = mapping between virtual ports and physical ports
  * @return ret = boolean return code (TRUE: ok, FALSE: error in the function)  
  */
-	public boolean GetVirttoPhyPortMap(String sliceId, long switchId, String flowMatch) {
+	public boolean GetVirttoPhyPortMap(OFMessage msg, String sliceId, long switchId, String flowMatch, int priority) {
 		boolean ret=true;
 		try {
-			ret = dbQuery.sqlGetVirttoPhyPortMap(sliceId, switchId,flowMatch, this);
+			ret = dbQuery.sqlGetVirttoPhyPortMap(sliceId, switchId,flowMatch, priority, this);
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
+			System.out.println("EXCEPTION CATCH ------------" + Long.toHexString(switchId) + "------------");
+			if (msg.getType() == OFType.PACKET_OUT) {
+				FVPacketOut packetOut = (FVPacketOut) msg;
+				System.out.println("PACKET_OUT: " + packetOut.toString());
+			
+			}
+			else if (msg.getType() == OFType.FLOW_MOD) {
+				FVFlowMod flowMod = (FVFlowMod) msg;
+				System.out.println("FLOW_MOD: " + flowMod.toString());
+			
+			}
 			e.printStackTrace();
 			ret = false;
 		}		
@@ -336,6 +373,18 @@ public class VTConfigInterface {
 		boolean ret = true;
 		try {
 			ret = dbQuery.sqlRemoveSliceInfo (sliceId);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			ret = false;
+		}
+		return ret;
+	}
+	
+	public boolean ManageVLinkLLDP(String sliceId, long switchId, byte[] bs) {
+		boolean ret = true;
+		try {
+			ret = dbQuery.sqlManageVLinkLLDP(sliceId, switchId, bs, this);
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

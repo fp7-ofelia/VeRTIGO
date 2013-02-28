@@ -6,7 +6,7 @@ package org.flowvisor.message;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.flowvisor.FlowVisor;
+import org.flowvisor.VeRTIGO;
 import org.flowvisor.classifier.FVClassifier;
 import org.flowvisor.classifier.XidPair;
 import org.flowvisor.classifier.XidTranslator;
@@ -125,7 +125,7 @@ public class FVMessageUtil {
 	}
 
 	public static OFMessage makeErrorMsg(OFFlowModFailedCode code, OFMessage msg) {
-		OFError err = (OFError) FlowVisor.getInstance().getFactory()
+		OFError err = (OFError) VeRTIGO.getInstance().getFactory()
 				.getMessage(OFType.ERROR);
 		err.setErrorType(OFErrorType.OFPET_FLOW_MOD_FAILED);
 		err.setErrorCode(code);
@@ -134,7 +134,7 @@ public class FVMessageUtil {
 	}
 
 	public static OFMessage makeErrorMsg(OFPortModFailedCode code, OFMessage msg) {
-		OFError err = (OFError) FlowVisor.getInstance().getFactory()
+		OFError err = (OFError) VeRTIGO.getInstance().getFactory()
 				.getMessage(OFType.ERROR);
 		err.setErrorType(OFErrorType.OFPET_PORT_MOD_FAILED);
 		err.setErrorCode(code);
@@ -143,7 +143,7 @@ public class FVMessageUtil {
 	}
 
 	public static OFMessage makeErrorMsg(OFBadRequestCode code, OFMessage msg) {
-		OFError err = (OFError) FlowVisor.getInstance().getFactory()
+		OFError err = (OFError) VeRTIGO.getInstance().getFactory()
 				.getMessage(OFType.ERROR);
 		err.setErrorType(OFErrorType.OFPET_BAD_REQUEST);
 		err.setErrorCode(code);
@@ -153,7 +153,7 @@ public class FVMessageUtil {
 
 	public static OFMessage makeErrorMsg(OFBadActionCode code, OFMessage msg) {
 
-		OFError err = (OFError) FlowVisor.getInstance().getFactory()
+		OFError err = (OFError) VeRTIGO.getInstance().getFactory()
 				.getMessage(OFType.ERROR);
 		err.setErrorType(OFErrorType.OFPET_BAD_ACTION);
 		err.setErrorCode(code);

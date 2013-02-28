@@ -39,6 +39,7 @@ import org.flowvisor.config.FVConfig;
 import org.flowvisor.exceptions.MalformedFlowChange;
 import org.flowvisor.exceptions.MapUnparsable;
 import org.flowvisor.flows.FlowDBEntry;
+import org.openflow.protocol.statistics.OFStatistics;
 
 
 /**
@@ -68,6 +69,14 @@ public class FVCtl {
 		new APICmd("deleteLink", 2, "<slicename> <linkname>"),
 		new APICmd("getVirtualLinks", 1, "<slicename>"),
 
+		new APICmd("enableVTPlannerStats", 1, "<enable>"),
+		new APICmd("setVTPlannerTimers", 2, "<timer> <exp_time>"),
+		new APICmd("getVTPlannerTimers", 0),
+		new APICmd("getVTPlannerSwitchInfo", 1, "<switchid>"),
+		new APICmd("getVTPlannerPortInfo", 2, "<switchid> <port>"),
+		new APICmd("getVTPlannerPortStats", 4, "<switchid> <port> <datetime1> <datetime2>"),
+		new APICmd("getVTPlannerQueueStats", 5, "<switchid> <port> <queue> <datetime1> <datetime2>"),
+		
 		new APICmd("getSliceStats", 1, "<slicename>"),
 		new APICmd("getSwitchStats", 1, "<dpid>"),
 		new APICmd("getSwitchFlowDB", 1, "<dpid>"),
@@ -401,6 +410,137 @@ public class FVCtl {
 		System.out.println("Got reply:");
 		for (String key : reply.keySet())
 			System.out.println(key + "=" + reply.get(key));
+	}
+	
+	/**
+	 * @name run_enableVTPlannerStats
+	 * @authors roberto.doriguzzi matteo.gerola
+	 */
+	public void run_enableVTPlannerStats(String enable) throws XmlRpcException {
+		Boolean reply = (Boolean) this.client
+				.execute("api.enableVTPlannerStats", new Object[] {enable});
+		if (reply == null) {
+			System.err.println("Got 'null' for reply :-(");
+			System.exit(-1);
+		}
+		else System.out.println("success!");
+	}
+	
+	/**
+	 * @name run_setVTPlannerTimers
+	 * @authors roberto.doriguzzi matteo.gerola
+	 */
+	public void run_setVTPlannerTimers(String timer, String expiration) throws XmlRpcException {
+		Boolean reply = (Boolean) this.client
+				.execute("api.setVTPlannerTimers", new Object[] {timer, expiration});
+		if (reply == null) {
+			System.err.println("Got 'null' for reply :-(");
+			System.exit(-1);
+		}
+		else System.out.println("success!");
+	}
+	
+	/**
+	 * @name run_getVTPlannerTimers
+	 * @authors roberto.doriguzzi matteo.gerola
+	 */
+	public void run_getVTPlannerTimers() throws XmlRpcException {
+		Object[] reply = (Object[]) this.client.execute("api.getVTPlannerTimers", new Object[] {});
+		
+		if (reply == null) {
+			System.err.println("Got 'null' for reply :-(");
+			System.exit(-1);
+		}
+		else {
+			for (int i = 0; i < reply.length; i++) {
+				System.out.println((String) reply[i]);
+			}
+			System.out.println("success!");
+		}
+	}
+	
+	/**
+	 * @name run_getVTPlannerPortStats
+	 * @authors roberto.doriguzzi matteo.gerola
+	 */
+
+	public void run_getVTPlannerPortStats(String switchId, String port, String time1, String time2) throws XmlRpcException, MapUnparsable {
+		Object[] reply = (Object[]) this.client.execute("api.getVTPlannerPortStats",
+				new Object[] {switchId, port, time1, time2});
+		
+		if (reply == null) {
+			System.err.println("Got 'null' for reply :-(");
+			System.exit(-1);
+		}
+		else {
+			for (int i = 0; i < reply.length; i++) {
+				System.out.println((String) reply[i]);
+			}
+			System.out.println("success!");
+		}
+	}
+	
+	/**
+	 * @name run_getVTPlannerQueueStats
+	 * @authors roberto.doriguzzi matteo.gerola
+	 */
+
+	public void run_getVTPlannerQueueStats(String switchId, String port, String queue, String time1, String time2) throws XmlRpcException, MapUnparsable {
+		Object[] reply = (Object[]) this.client.execute("api.getVTPlannerQueueStats",
+				new Object[] {switchId, port, queue, time1, time2});
+		
+		if (reply == null) {
+			System.err.println("Got 'null' for reply :-(");
+			System.exit(-1);
+		}
+		else {
+			for (int i = 0; i < reply.length; i++) {
+				System.out.println((String) reply[i]);
+			}
+			System.out.println("success!");
+		}
+	}
+	
+	/**
+	 * @name run_getVTPlannerPortInfo
+	 * @authors roberto.doriguzzi matteo.gerola
+	 */
+
+	public void run_getVTPlannerPortInfo(String switchId, String port) throws XmlRpcException, MapUnparsable {
+		Object[] reply = (Object[]) this.client.execute("api.getVTPlannerPortInfo",
+				new Object[] {switchId, port});
+		
+		if (reply == null) {
+			System.err.println("Got 'null' for reply :-(");
+			System.exit(-1);
+		}
+		else {
+			for (int i = 0; i < reply.length; i++) {
+				System.out.println((String) reply[i]);
+			}
+			System.out.println("success!");
+		}
+	}
+	
+	/**
+	 * @name run_getVTPlannerSwitchInfo
+	 * @authors roberto.doriguzzi matteo.gerola
+	 */
+
+	public void run_getVTPlannerSwitchInfo(String switchId) throws XmlRpcException, MapUnparsable {
+		Object[] reply = (Object[]) this.client.execute("api.getVTPlannerSwitchInfo",
+				new Object[] {switchId});
+		
+		if (reply == null) {
+			System.err.println("Got 'null' for reply :-(");
+			System.exit(-1);
+		}
+		else {
+			for (int i = 0; i < reply.length; i++) {
+				System.out.println((String) reply[i]);
+			}
+			System.out.println("success!");
+		}
 	}
 
 	/**

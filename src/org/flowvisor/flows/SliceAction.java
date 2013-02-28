@@ -5,7 +5,7 @@ package org.flowvisor.flows;
 
 import java.nio.*;
 import org.openflow.protocol.action.*;
-import org.flowvisor.*;
+import org.flowvisor.VeRTIGO;
 
 /**
  * @author capveg
@@ -24,7 +24,7 @@ public class SliceAction extends OFActionVendor implements Cloneable {
 		super();
 		this.sliceName = sliceName;
 		this.slicePerms = slicePerms;
-		this.setVendor(FlowVisor.FLOWVISOR_VENDOR_EXTENSION);
+		this.setVendor(VeRTIGO.FLOWVISOR_VENDOR_EXTENSION);
 	}
 
 	public SliceAction() {

@@ -17,7 +17,7 @@ import net.sf.cglib.proxy.MethodProxy;
 
 import org.apache.commons.codec.binary.Base64;
 import org.eclipse.jetty.http.HttpHeaders;
-import org.flowvisor.FlowVisor;
+import org.flowvisor.VeRTIGO;
 import org.flowvisor.exceptions.RPCException;
 import org.flowvisor.flows.SliceAction;
 import org.json.JSONParam;
@@ -247,7 +247,7 @@ public class AuthorizedServiceProxy  implements MethodInterceptor{
 		public OFAction deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
 		throws JsonParseException {
 			int vendor = json.getAsJsonObject().get("vendor").getAsJsonPrimitive().getAsInt();
-			if(vendor == FlowVisor.FLOWVISOR_VENDOR_EXTENSION){
+			if(vendor == VeRTIGO.FLOWVISOR_VENDOR_EXTENSION){
 				return context.deserialize(json, SliceAction.class);
 			}
 			return context.deserialize(json, OFAction.class);

@@ -5,7 +5,7 @@ package org.flowvisor.vtopology.topology_configurator;
 
 import java.util.Set;
 
-import org.flowvisor.FlowVisor;
+import org.flowvisor.VeRTIGO;
 import org.flowvisor.flows.FlowSpaceUtil;
 import org.openflow.protocol.OFMatch;
 import org.flowvisor.config.FVConfig;
@@ -61,108 +61,108 @@ public class VTTests {
 			link1.FillHopList("00:00:00:00:00:00:00:01/1-00:00:00:00:00:00:00:02/1");
 			link1.linkId=1;
 			FVConfig.addVirtualLink("alice",link1);
-			FlowVisor.getInstance().checkPointConfig();
+			VeRTIGO.getInstance().checkPointConfig();
 			VTLink link2 = new VTLink();
 			link2.linkId=2;
 			link2.FillHopList("00:00:00:00:00:00:00:01/1-00:00:00:00:00:00:00:02/1,00:00:00:00:00:00:00:02/2-00:00:00:00:00:00:00:04/1");
 			FVConfig.addVirtualLink("alice",link2);
-			FlowVisor.getInstance().checkPointConfig();
+			VeRTIGO.getInstance().checkPointConfig();
 			VTLink link3 = new VTLink();
 			link3.linkId=3;
 			link3.FillHopList("00:00:00:00:00:00:00:04/1-00:00:00:00:00:00:00:02/2,00:00:00:00:00:00:00:02/3-00:00:00:00:00:00:00:03/1");
 			FVConfig.addVirtualLink("alice",link3);
-			FlowVisor.getInstance().checkPointConfig();
+			VeRTIGO.getInstance().checkPointConfig();
 		}
 		else if (testNumber == 3) {
 			//ELIMINAZIONE LINK VIRTUALI
 			FVConfig.deleteVirtualLink("alice", 1);
-			FlowVisor.getInstance().checkPointConfig();
+			VeRTIGO.getInstance().checkPointConfig();
 			FVConfig.deleteVirtualLink("alice", 2);
-			FlowVisor.getInstance().checkPointConfig();
+			VeRTIGO.getInstance().checkPointConfig();
 			FVConfig.deleteVirtualLink("alice", 3);
-			FlowVisor.getInstance().checkPointConfig();
+			VeRTIGO.getInstance().checkPointConfig();
 		}
-		else if (testNumber == 4) {
-			System.out.println("------INIZIO SIMULAZIONE PACCHETTO-------");
-			String flowMatchMod = "";
-			//SIMULAZIONE PACKET-IN UNICAST			
-			//FLOW-MATCH
-			OFMatch match = new OFMatch();
-			match.setDataLayerSource("01:01:01:01:01:01");
-			match.setDataLayerDestination("02:02:02:02:02:01");
-			match.setInputPort((short) 2);
-			match.setDataLayerType((short)0x806);
-			match.setWildcards(0);
-			//UPLINK SWITCH1
-			vt_config.Clear();
-			vt_config.phyPortList.add((int)match.getInputPort());
-			flowMatchMod = FlowMatchModifier(match);
-			vt_config.GetSwitchInfo("alice", FlowSpaceUtil.parseDPID("00:00:00:00:00:00:00:01"),  flowMatchMod);
-			
-			//MAPPING PER CONTROLLER
-			System.out.println("lo switch 1 � endpoint: "+ vt_config.isEndPoint);
-			
-			//DOWNLINK SWITCH1
-			vt_config.Clear();
-			vt_config.virtPortId=1;
-			vt_config.virtPortList.add(7);
-			flowMatchMod = FlowMatchModifier(match);
-			vt_config.GetVirttoPhyPortMap("alice",FlowSpaceUtil.parseDPID("00:00:00:00:00:00:00:01"), flowMatchMod);
-			System.out.println("Switch 1, arriva flow da controller, porta virtuale ingresso: "+vt_config.virtPortId + " porta fisica ingresso: "+
-					vt_config.phyPortId);
-
-			Set<Integer> keySetPortMap = vt_config.virtToPhyPortMap.keySet();
-			for (int port:keySetPortMap) {
-				System.out.println("Switch 1, arriva flow da controller, porta virtuale: "+port + " porta fisica: "+
-						vt_config.virtToPhyPortMap.get(port).toString());
-				int tmpPort = vt_config.virtToPhyPortMap.get(port);
-				match.setInputPort((short) tmpPort);
-			}
-					
-			
-			//UPLINK SWITCH2
-			vt_config.Clear();
-			vt_config.phyPortList.add(1);
-			flowMatchMod = FlowMatchModifier(match);
-			vt_config.GetSwitchInfo("alice", FlowSpaceUtil.parseDPID("00:00:00:00:00:00:00:02"),  flowMatchMod);
-			
-			//MAPPING PER CONTROLLER
-			System.out.println("lo switch 2 � endpoint: "+ vt_config.isEndPoint);
-			if (vt_config.isEndPoint == false) {
-				System.out.println("Switch 2, port fisica uscita: "+ vt_config.phyPortId);
-				match.setInputPort((short) vt_config.phyPortId);
-			}
-			
-			//UPLINK SWITCH4
-			vt_config.Clear();
-			vt_config.phyPortList.add(1);
-			flowMatchMod = FlowMatchModifier(match);
-			vt_config.GetSwitchInfo("alice", FlowSpaceUtil.parseDPID("00:00:00:00:00:00:00:04"),  flowMatchMod);
-			
-			//MAPPING PER CONTROLLER
-			System.out.println("lo switch 4 � endpoint: "+ vt_config.isEndPoint);
-
-			vt_config.Clear();
-			vt_config.virtPortList.add(1);
-			
-			//DOWNLINK SWITCH4
-			vt_config.virtPortId=7;
-			vt_config.virtPortList.add(1);
-			flowMatchMod = FlowMatchModifier(match);
-			vt_config.GetVirttoPhyPortMap("alice",FlowSpaceUtil.parseDPID("00:00:00:00:00:00:00:04"), flowMatchMod);
-			System.out.println("Switch 4, arriva flow da controller, porta virtuale ingresso: "+vt_config.virtPortId + " porta fisica ingresso: "+
-					vt_config.phyPortId);
-			
-			keySetPortMap = vt_config.virtToPhyPortMap.keySet();
-			for (int port:keySetPortMap) {
-				System.out.println("Switch 4, arriva flow da controller, porta virtuale: "+port + " porta fisica: "+
-						vt_config.virtToPhyPortMap.get(port).toString());
-				int tmpPort = vt_config.virtToPhyPortMap.get(port);
-				match.setInputPort((short) tmpPort);
-			}
-			
-			System.out.println("------FINE SIMULAZIONE PACCHETTO-------");
-		}
+//		else if (testNumber == 4) {
+//			System.out.println("------INIZIO SIMULAZIONE PACCHETTO-------");
+//			String flowMatchMod = "";
+//			//SIMULAZIONE PACKET-IN UNICAST			
+//			//FLOW-MATCH
+//			OFMatch match = new OFMatch();
+//			match.setDataLayerSource("01:01:01:01:01:01");
+//			match.setDataLayerDestination("02:02:02:02:02:01");
+//			match.setInputPort((short) 2);
+//			match.setDataLayerType((short)0x806);
+//			match.setWildcards(0);
+//			//UPLINK SWITCH1
+//			vt_config.Clear();
+//			vt_config.phyPortList.add((int)match.getInputPort());
+//			flowMatchMod = FlowMatchModifier(match);
+//			vt_config.GetSwitchInfo("alice", FlowSpaceUtil.parseDPID("00:00:00:00:00:00:00:01"),  flowMatchMod);
+//			
+//			//MAPPING PER CONTROLLER
+//			System.out.println("lo switch 1 � endpoint: "+ vt_config.isEndPoint);
+//			
+//			//DOWNLINK SWITCH1
+//			vt_config.Clear();
+//			vt_config.virtPortId=1;
+//			vt_config.virtPortList.add(7);
+//			flowMatchMod = FlowMatchModifier(match);
+//			vt_config.GetVirttoPhyPortMap("alice",FlowSpaceUtil.parseDPID("00:00:00:00:00:00:00:01"), flowMatchMod);
+//			System.out.println("Switch 1, arriva flow da controller, porta virtuale ingresso: "+vt_config.virtPortId + " porta fisica ingresso: "+
+//					vt_config.phyPortId);
+//
+//			Set<Integer> keySetPortMap = vt_config.virtToPhyPortMap.keySet();
+//			for (int port:keySetPortMap) {
+//				System.out.println("Switch 1, arriva flow da controller, porta virtuale: "+port + " porta fisica: "+
+//						vt_config.virtToPhyPortMap.get(port).toString());
+//				int tmpPort = vt_config.virtToPhyPortMap.get(port);
+//				match.setInputPort((short) tmpPort);
+//			}
+//					
+//			
+//			//UPLINK SWITCH2
+//			vt_config.Clear();
+//			vt_config.phyPortList.add(1);
+//			flowMatchMod = FlowMatchModifier(match);
+//			vt_config.GetSwitchInfo("alice", FlowSpaceUtil.parseDPID("00:00:00:00:00:00:00:02"),  flowMatchMod);
+//			
+//			//MAPPING PER CONTROLLER
+//			System.out.println("lo switch 2 � endpoint: "+ vt_config.isEndPoint);
+//			if (vt_config.isEndPoint == false) {
+//				System.out.println("Switch 2, port fisica uscita: "+ vt_config.phyPortId);
+//				match.setInputPort((short) vt_config.phyPortId);
+//			}
+//			
+//			//UPLINK SWITCH4
+//			vt_config.Clear();
+//			vt_config.phyPortList.add(1);
+//			flowMatchMod = FlowMatchModifier(match);
+//			vt_config.GetSwitchInfo("alice", FlowSpaceUtil.parseDPID("00:00:00:00:00:00:00:04"),  flowMatchMod);
+//			
+//			//MAPPING PER CONTROLLER
+//			System.out.println("lo switch 4 � endpoint: "+ vt_config.isEndPoint);
+//
+//			vt_config.Clear();
+//			vt_config.virtPortList.add(1);
+//			
+//			//DOWNLINK SWITCH4
+//			vt_config.virtPortId=7;
+//			vt_config.virtPortList.add(1);
+//			flowMatchMod = FlowMatchModifier(match);
+//			vt_config.GetVirttoPhyPortMap("alice",FlowSpaceUtil.parseDPID("00:00:00:00:00:00:00:04"), flowMatchMod);
+//			System.out.println("Switch 4, arriva flow da controller, porta virtuale ingresso: "+vt_config.virtPortId + " porta fisica ingresso: "+
+//					vt_config.phyPortId);
+//			
+//			keySetPortMap = vt_config.virtToPhyPortMap.keySet();
+//			for (int port:keySetPortMap) {
+//				System.out.println("Switch 4, arriva flow da controller, porta virtuale: "+port + " porta fisica: "+
+//						vt_config.virtToPhyPortMap.get(port).toString());
+//				int tmpPort = vt_config.virtToPhyPortMap.get(port);
+//				match.setInputPort((short) tmpPort);
+//			}
+//			
+//			System.out.println("------FINE SIMULAZIONE PACCHETTO-------");
+//		}
 		else if (testNumber == 5) {
 			/*
 			vt_config.Clear();

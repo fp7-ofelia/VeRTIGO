@@ -338,7 +338,67 @@ public interface FVUserAPI {
 			SliceNotFound, PermissionDeniedException;
 	
 	/**
-	 * @name setDbInfo
+	 * @name enableVTPlannerStats
+	 * @authors roberto.doriguzzi matteo.gerola
+
+	 */
+	public boolean enableVTPlannerStats(String enable) 
+			throws PermissionDeniedException;
+	
+	/**
+	 * @name setVTPlannerTimers
+	 * @authors roberto.doriguzzi matteo.gerola
+
+	 */
+	public boolean setVTPlannerTimers(String timer, String expiration) 
+			throws PermissionDeniedException;
+	
+	/**
+	 * @name getVTPlannerTimers
+	 * @authors roberto.doriguzzi matteo.gerola
+
+	 */
+	public Collection<String> getVTPlannerTimers() 
+			throws PermissionDeniedException;
+	
+	/**
+	 * @name getVTPlannerPortStats
+	 * @throws ConfigError 
+	 * @throws RuntimeException 
+	 * @authors roberto.doriguzzi matteo.gerola
+	 */
+	public Collection<String> getVTPlannerPortStats(String switchId, String port, String time1, String time2)
+			throws RuntimeException, ConfigError;
+	
+	/**
+	 * @name getVTPlannerQueueStats
+	 * @throws ConfigError 
+	 * @throws RuntimeException 
+	 * @authors roberto.doriguzzi matteo.gerola
+	 */
+	public Collection<String> getVTPlannerQueueStats(String switchId, String port, String queue, String time1, String time2)
+			throws RuntimeException, ConfigError;
+	
+	/**
+	 * @name getVTPlannerPortInfo
+	 * @throws ConfigError 
+	 * @throws RuntimeException 
+	 * @authors roberto.doriguzzi matteo.gerola
+	 */
+	public Collection<String> getVTPlannerPortInfo(String switchId, String port)
+			throws RuntimeException, ConfigError;
+	
+	/**
+	 * @name getVTPlannerSwitchInfo
+	 * @throws ConfigError 
+	 * @throws RuntimeException 
+	 * @authors roberto.doriguzzi matteo.gerola
+	 */
+	public Collection<String> getVTPlannerSwitchInfo(String switchId)
+			throws RuntimeException, ConfigError;
+	
+	/**
+	 * @name setDbInfo 
 	 * @authors roberto.doriguzzi matteo.gerola
 
 	 */

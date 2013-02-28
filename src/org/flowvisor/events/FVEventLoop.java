@@ -11,7 +11,7 @@ import java.nio.channels.Selector;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.flowvisor.FlowVisor;
+import org.flowvisor.VeRTIGO;
 import org.flowvisor.exceptions.UnhandledEvent;
 import org.flowvisor.fvtimer.FVTimer;
 import org.flowvisor.log.FVLog;
@@ -44,7 +44,7 @@ public class FVEventLoop {
 	 */
 
 	public void register(SelectableChannel ch, int ops, FVEventHandler handler) {
-		FlowVisor.getInstance().addHandler(handler);
+		VeRTIGO.getInstance().addHandler(handler);
 		try {
 			ch.register(selector, ops, handler);
 		} catch (ClosedChannelException e) {
@@ -64,7 +64,7 @@ public class FVEventLoop {
 	public void unregister(SelectableChannel ch, FVEventHandler handler) {
 		// note, apparently you don't have to manually cancel a selectable
 		// channel; it's handled by socket.close()
-		FlowVisor.getInstance().removeHandler(handler);
+		VeRTIGO.getInstance().removeHandler(handler);
 	}
 
 	public void queueEvent(FVEvent e) {
@@ -86,6 +86,15 @@ public class FVEventLoop {
 	 */
 	public void addTimer(FVTimerEvent e) {
 		fvtimer.addTimer(e);
+	}
+	
+	/****
+	 * Remove a timer event from the Timer class
+	 *
+	 * @param e
+	 */
+	public boolean removeTimer(FVTimerEvent e) {
+		return fvtimer.removeTimer(e.getID());
 	}
 
 	/**

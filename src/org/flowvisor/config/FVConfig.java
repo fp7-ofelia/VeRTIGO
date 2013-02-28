@@ -18,7 +18,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.flowvisor.FlowVisor;
+import org.flowvisor.VeRTIGO;
 import org.flowvisor.api.APIAuth;
 import org.flowvisor.events.FVEventHandler;
 import org.flowvisor.exceptions.DuplicateControllerException;
@@ -88,6 +88,9 @@ public class FVConfig {
 	/**
 	 * @authors roberto.doriguzzi matteo.gerola
 	 */
+	final static public String ENABLE_VTPLANNER_STATS = "vt_enable_vtplanner_stats";
+	final static public String VTPLANNER_STATS_TIMER = "vt_vtplanner_stats_timer";
+	final static public String VTPLANNER_STATS_EXPIR = "vt_vtplanner_stats_expiration";
 	final static public String DB_TYPE = "vt_db_type";
 	final static public String DB_IP = "vt_db_ip_address";
 	final static public String DB_PORT = "vt_db_port";
@@ -483,8 +486,8 @@ public class FVConfig {
 			e.printStackTrace();
 		}
 		// Write out update config
-		if (FlowVisor.getInstance() != null)
-			FlowVisor.getInstance().checkPointConfig();
+		if (VeRTIGO.getInstance() != null)
+			VeRTIGO.getInstance().checkPointConfig();
 	}
 
 	/*
@@ -722,6 +725,40 @@ public class FVConfig {
 		}
 	}
 
+	/**
+	 * @name enableVTPlannerStats
+	 * @description Enables or disables the internal module that collects statistics of traffic. These stats are used 
+	 * 				by the VT-Planner module to find the optimal aggregation for virtual links
+	 * @authors roberto.doriguzzi matteo.gerola
+	 * @param enable = 1 means enable, 0 disable
+	 */
+	public static void enableVTPlannerStats(String enable) {
+		try {
+			FVConfig.setInt(ENABLE_VTPLANNER_STATS, Integer.parseInt(enable));
+		} catch (ConfigError e) {
+			throw new RuntimeException("failed to enable/disable the statistics storage module " + "::" + e);
+		}
+		
+	}
+	
+	/**
+	 * @name setVTPlannerStatsTimers
+	 * @description Sets the timers for the VTPlanner statistics collector module. The first is the period of
+	 * 				time between two stats requests, the second is the stats expiration time.
+	 * @authors roberto.doriguzzi matteo.gerola
+	 * @param timer = time in seconds
+	 * @param expiration = time in seconds
+	 */
+	public static void setVTPlannerStatsTimers(String timer, String expiration) {
+		try {
+			FVConfig.setString(VTPLANNER_STATS_TIMER, timer);
+			FVConfig.setString(VTPLANNER_STATS_EXPIR, expiration);
+		} catch (ConfigError e) {
+			throw new RuntimeException("failed to set the statistics timers " + "::" + e);
+		}
+		
+	}
+	
 	/**
 	 * @name setDbInfo
 	 * @authors roberto.doriguzzi matteo.gerola

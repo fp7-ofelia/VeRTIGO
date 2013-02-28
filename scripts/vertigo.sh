@@ -6,7 +6,7 @@ if [ -z $base ] ; then
     envs=`dirname $0`/../scripts/envs.sh
     DEBUG=yes
 else
-    envs=$base/etc/flowvisor/envs.sh
+    envs=$base/etc/vertigo/envs.sh
 fi
 
 if [ -f $envs ] ; then
@@ -30,4 +30,4 @@ fi
 
 echo Starting FlowVisor >&2 
 echo Running with FV_JVM_ARGS=$FV_JVM_ARGS >&2
-exec java $FV_JVM_ARGS $fv_defines $sslopts -cp $classpath org.flowvisor.FlowVisor "$@" 
+exec java $FV_JVM_ARGS $fv_defines $sslopts -cp $classpath org.flowvisor.VeRTIGO "$@" 

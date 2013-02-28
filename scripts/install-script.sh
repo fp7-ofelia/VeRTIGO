@@ -10,8 +10,8 @@ bingroup_default=`groups | cut -f1 -d\ `
  
 # if root is installing, then assume they don't want to run fv as root
 if [ "X$USER" = "Xroot" ] ; then
-	fvuser_default=flowvisor
-	fvgroup_default=flowvisor
+	fvuser_default=root
+	fvgroup_default=root
     sudo=""
 else
 	fvuser_default=$binuser_default
@@ -25,10 +25,10 @@ scriptd=$base/scripts
 libs=$base/lib
 dist=$base/dist
 jni=$base/jni
-config=flowvisor-config.xml
+config=vertigo-config.xml
 #verbose=-v
 
-usage="$0 [-p prefix_dir] [-u flowvisor_user] [-g flowvisor_group] [-r root_dir]"
+usage="$0 [-p prefix_dir] [-u vertigo_user] [-g vertigo_group] [-r root_dir]"
 usage_str="p:u:g:r:"
 
 while getopts $usage_str opt; do
@@ -39,11 +39,11 @@ while getopts $usage_str opt; do
     ;;
     u)
         fvuser=$OPTARG
-        echo "Set fvuser to '$fvuser'" >&2
+        echo "Set fvuser to '$vertigo_user'" >&2
     ;;
     g)
         fvgroup=$OPTARG
-        echo "Set fvgroup to '$fvgroup'" >&2
+        echo "Set fvgroup to '$vertigo_group'" >&2
     ;;
     r)
         root=$OPTARG
@@ -72,28 +72,28 @@ if [ "X$prefix" = "X" ] ; then
     prefix=$prefix_default
 fi
 
-test -z "$fvuser" && read -p "FlowVisor User (needs to already exist) ($fvuser_default): " fvuser
+test -z "$fvuser" && read -p "VeRTIGO User (needs to already exist) ($fvuser_default): " fvuser
 if [ "X$fvuser" = "X" ] ; then
     fvuser=$fvuser_default
 fi
 id $fvuser 2>/dev/null 1>/dev/null
 
 while [ "$?" -ne "0" ] ; do
-    read -p "FlowVisor User (needs to already exist, '$fvuser' does not exist) ($fvuser_default): " fvuser
+    read -p "VeRTIGO User (needs to already exist, '$fvuser' does not exist) ($fvuser_default): " fvuser
     if [ "X$fvuser" = "X" ] ; then
     	fvuser=$fvuser_default
     fi
     id $fvuser 2>/dev/null 1>/dev/null
 done
 
-test -z "$fvgroup" && read -p "FlowVisor Group (needs to already exist) ($fvgroup_default): " fvgroup
+test -z "$fvgroup" && read -p "VeRTIGO Group (needs to already exist) ($fvgroup_default): " fvgroup
 if [ "X$fvgroup" = "X" ] ; then
     fvgroup=$fvgroup_default
 fi
 id -g $fvgroup 2>/dev/null 1>/dev/null
 
 while [ "$?" -ne "0" ] ; do
-    read -p "FlowVisor Group (needs to already exist, '$fvgroup' does not exist) ($fvgroup_default): " fvgroup
+    read -p "VeRTIGO Group (needs to already exist, '$fvgroup' does not exist) ($fvgroup_default): " fvgroup
     if [ "X$fvgroup" = "X" ] ; then
         fvgroup=$fvgroup_default
     fi
@@ -115,15 +115,15 @@ if [ "X$root" = "X" ] ; then
 fi
 
 
-echo Installing FlowVisor into $root$prefix with prefix=$prefix as user/group ${fvuser}:${fvgroup}
+echo Installing VeRTIGO into $root$prefix with prefix=$prefix as user/group ${fvuser}:${fvgroup}
 
 bin_SCRIPTS="\
-    fvctl \
+    vectl \
     "
 
 sbin_SCRIPTS="\
     fvconfig \
-    flowvisor \
+    vertigo \
     "
 
 LIBS="\
@@ -165,12 +165,12 @@ done
 
 echo Creating directories
 
-for d in bin sbin libexec/flowvisor etc share/man/man1 share/man/man8 share/doc/flowvisor ; do 
+for d in bin sbin libexec/vertigo etc share/man/man1 share/man/man8 share/doc/vertigo ; do 
     echo Creating $prefix/$d
     $install $verbose --owner=$binuser --group=$bingroup --mode=755 -d $root$prefix/$d
 done
 
-for d in /etc/init.d /var/log/flowvisor ; do
+for d in /etc/init.d /var/log/vertigo ; do
     if [ ! -d $root$d ] ; then
         echo Creating $d
         $install $verbose --owner=$binuser --group=$bingroup --mode=755 -d $root$d
@@ -178,8 +178,8 @@ for d in /etc/init.d /var/log/flowvisor ; do
 done
 
 
-echo "Creating $prefix/etc/flowvisor (owned by user=$fvuser  group=$fvgroup)"
-$install $verbose --owner=$fvuser --group=$fvgroup --mode=2755 -d $root$prefix/etc/flowvisor
+echo "Creating $prefix/etc/vertigo (owned by user=$fvuser  group=$fvgroup)"
+$install $verbose --owner=$fvuser --group=$fvgroup --mode=2755 -d $root$prefix/etc/vertigo
 
 echo Installing scripts
 $install $verbose --owner=$binuser --group=$bingroup --mode=755 $bin_SCRIPTS $root$prefix/bin
@@ -189,23 +189,23 @@ echo "Installing SYSV startup script (not enabled by default)"
 cp fv-startup.sh fv-startup
 sed -i -e "s/FVUSER/$fvuser/" fv-startup
 sed -i -e "s,PREFIX,$prefix," fv-startup
-$install $verbose --owner=$binuser --group=$bingroup --mode=755 fv-startup  $root/etc/init.d/flowvisor
+$install $verbose --owner=$binuser --group=$bingroup --mode=755 fv-startup  $root/etc/init.d/vertigo
 
 
 echo Installing JNI libraries
 cd $owd
 cd $jni
-make install DSTDIR=$root$prefix/libexec/flowvisor
+make install DSTDIR=$root$prefix/libexec/vertigo
 
 echo Installing jars
 cd $owd
 cd $libs
-$install $verbose --owner=$binuser --group=$bingroup --mode=644 $LIBS $root$prefix/libexec/flowvisor
+$install $verbose --owner=$binuser --group=$bingroup --mode=644 $LIBS $root$prefix/libexec/vertigo
 
-echo Installing flowvisor.jar
+echo Installing vertigo.jar
 cd $owd
 cd $dist
-$install $verbose --owner=$binuser --group=$bingroup --mode=644 flowvisor.jar  $root$prefix/libexec/flowvisor
+$install $verbose --owner=$binuser --group=$bingroup --mode=644 vertigo.jar  $root$prefix/libexec/vertigo
 
 echo Installing manpages
 cd $owd
@@ -218,13 +218,13 @@ $install $verbose --owner=$binuser --group=$bingroup --mode=644 flowvisor.8  $ro
 
 echo Installing configs
 cd $owd
-$install $verbose --owner=$fvuser --group=$fvgroup --mode=644 $scriptd/envs $root$prefix/etc/flowvisor/envs.sh
+$install $verbose --owner=$fvuser --group=$fvgroup --mode=644 $scriptd/envs $root$prefix/etc/vertigo/envs.sh
 
 echo Installing documentation
 cd $owd
-$install $verbose --owner=$binuser --group=$bingroup --mode=644 $DOCS $root$prefix/share/doc/flowvisor
+$install $verbose --owner=$binuser --group=$bingroup --mode=644 $DOCS $root$prefix/share/doc/vertigo
 
-if [ ! -f $root$prefix/etc/flowvisor/config.xml ] ; then 
-    echo Generating a default config FlowVisor config
-    install_root=$root $root$prefix/sbin/fvconfig generate $root$prefix/etc/flowvisor/config.xml
+if [ ! -f $root$prefix/etc/vertigo/config.xml ] ; then 
+    echo Generating a default config VeRTIGO config
+    install_root=$root $root$prefix/sbin/fvconfig generate $root$prefix/etc/vertigo/config.xml
 fi

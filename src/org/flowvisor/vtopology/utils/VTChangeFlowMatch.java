@@ -27,8 +27,7 @@ public class VTChangeFlowMatch {
 	static public String VTChangeFM(OFMatch match) {
 		match.setWildcards(match.getWildcards() | OFMatch.OFPFW_IN_PORT);
 		
-		//in case of broadcast packets we ignore all fields above layer 2
-		//TODO: verify if this workaround is valid for controllers different from nox
+		//in case of ARP packets we ignore some fields
 		if(match.getDataLayerType() == 0x806){
 			match.setWildcards(match.getWildcards() | (OFMatch.OFPFW_NW_DST_ALL | OFMatch.OFPFW_NW_SRC_ALL));
 			match.setWildcards(match.getWildcards() | (OFMatch.OFPFW_NW_TOS));

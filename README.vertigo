@@ -1,25 +1,26 @@
 INTRODUCTION
 
-The main purpose of VeRTIGO is to enable the instantiation of generalized
-Virtual Topologies (VT) including virtual links and virtual ports. In particular
-VeRTIGO introduces over FlowVisor additional intelligence able to expose
-different virtual views of the network to different controllers. This is
-achieved by remapping some fields of messages coming from the network and
-directed to the controllers (and vice-versa) and by directly replying to those
-switches that are intermediate points of virtual links and that
-must be hidden to the controller of the VT. 
+VeRTIGO is a Network Virtualization architecture that extends FlowVisor by
+introducing additional intelligence. The main purpose of VeRTIGO is to enable
+the instantiation of generalized Virtual Topologies (VT) including virtual links
+and virtual ports. In particular, VeRTIGO is able to expose different virtual
+views of the network to different controllers. This is achieved by remapping
+some fields of messages coming from the network and directed to the controllers
+(and vice-versa) and by directly replying to those switches that are
+intermediate points of virtual links and that must be hidden to the controller
+of the VT.
 The two processes both depend on the VT configuration and in particular on the
-configuration of Virtual Links instantiated within the VT.
-Beside Virtual Links, we have also introduced the concept of Virtual Ports with
-purpose of supporting the instantiation of multiple Virtual Links on each
-physical link. Virtual Ports are simply Physical Ports with a virtual port
-numbers and are needed when a single physical port is the termination of
-multiple virtual links. In this situation, each OpenFlow message related to this
-physical port must be modified with virtual port numbers consistent with the
-instantiated virtual links before being forwarded to the controller.
+configuration of Virtual Links instantiated within the VT. Beside Virtual Links,
+we have also introduced the concept of Virtual Ports with purpose of supporting
+the instantiation of multiple Virtual Links on each physical link. Virtual Ports
+are simply Physical Ports with virtual port numbers and are needed when a single
+physical port is the termination of multiple virtual links. In this situation,
+each OpenFlow message related to this physical port must be modified with
+virtual port numbers consistent with the instantiated virtual links before being
+forwarded to the controller.
 
 This document describes the VeRTIGO's internals and is intended for
-people looking to modify/develop the actual code.
+people looking to modify/develop the current code.
 At the bottom there is also a short configuration HOWTO which describes the
 main steps to start using VeRTIGO.
 
@@ -34,6 +35,8 @@ FlowVisor source code tree. The base package is
 
 Most of functions of VeRTIGO are invoked from the FVSlicer as Virtual Topology
 configurations differ for each slice. 
+Other classes can be found within package org.flowvisor.events (VTEvent,
+VTLLDPEvent amd VTStoreStatisticsEvent)
 
 The code added for VeRTIGO is usually comprised within lines:
 
@@ -41,82 +44,159 @@ The code added for VeRTIGO is usually comprised within lines:
 ...
 // END VERTIGO
 
-
+Most significant classes are:
 
 VTConfigInterface: 	is the class which manages the configuration of the VTs
 			and is used by the other modules (like PortMapper and
 			LinkBroker) to correctly manage the virtual elements
 			included in the VT.
 VTSqlDb:		stores the configuration of virtual elements for each
-			virtual topology. It is also used to keep track of
-			flows crossing virtual links, i.e. it stores the
-			association between flow_matches and virtual link IDs. 
+			virtual topology such as virtual links and virtual
+			ports. It is also used to keep track of flows crossing
+			virtual links, i.e. it stores the association between
+			flow_matches and virtual link IDs. 
 			These entries are used to identify the virtual link 
 			crossed by a flow when the flow arrives to the next hop.
 VTPortMapper:		intercepts both messages from switches to controllers
 			(e.g. packet_in) and from controllers to switches (e.g.
-			stats requests) and rewrites the port numbers values. 
+			stats requests, packet_out, flow_mod) and rewrites the
+			port numbers values. 
 VTLinkBroker:		generates and sends flow_mod and packet_out messages to 
 			those switches that are intermediate points of virtual
-			links and that must be hidden to the controllers.
+			links and that must be hidden to the controllers.	
+VTEvent			Handles the changes of status (up/down) of physical
+			ports when virtual links are involved
+VTLLDPEvent		Event handler that manages LLDP messages through virtual
+			links
+VTStoreStatisticsEvent	Event handler that periodically sends requests to the
+			switches and stores the traffic statistics into a
+			database
+VTHop, VTLink		Structure of virtual links. A virtual link is described
+			as a sequence of hops.
+VTStatsDb, VTStatsUtils Methods to store and manage the traffic statistics
+
 
 
 COMPILATION AND INSTALLATION
 	
-See the original FlowVisor procedure described within file INSTALL.
+Requirements:
+    - ant           (no version requirements?)
+    - java 1.6	    (currently works with both Sun's JDK; 
+                     and OpenJDK)
 
+Build:
+    - run `make` (or `ant` : Makefile is just a wrapper)
+
+Install:
+    - make install
+
+See also file INSTALL in the root directory.
+    
+    
 NOTES ON INSTALLATION
 
-1. Scripts install-script.sh and envs.sh have been modified from the original
-FlowVisor version in order to support the additional libraries required by
-VeRTIGO, i.e. mysql-connector-java-5.1.15-bin.jar and hsqldb.jar (both in
-/lib/). 
+1. Some of Scripts in scripts/ have been modified from the
+original FlowVisor version in order to support the additional
+libraries required by VeRTIGO, i.e. mysql-connector-java-5.1.15-bin.jar and
+hsqldb.jar (both in /lib/). 
 2. VeRTIGO needs a patched version of openflow.jar which has been added in
 /lib/ (see post at
 https://mailman.stanford.edu/pipermail/openflow-discuss/2012-February/002997.
 html)
 
 
-CONFIGURATION OF VERTIGO
+INITIAL CONFIGURATION
 
-As for FlowVisor, the VeRTIGO configuration process starts with the generation 
-of the base configuration file through the command: 
+As for FlowVisor, the VeRTIGO configuration process starts with the generation
+of the base configuration file through the command:
 
 /usr/local/sbin/fvconfig generate config.xml
 
 The initial config file contains some sample VTs and flow definitions. These
-must be removed before VeRTIGO can be used. In order to make the required changes, 
-VeRTIGO must be running. Example invocation is:
+must be removed before VeRTIGO can be used. In order to make the required
+changes, VeRTIGO must be running. Example invocation is:
 
-flowvisor config.xml 
+vertigo config.xml
 
-Then, give the following commands (deleting VTs implicitly deletes the rules 
+Then, give the following commands (deleting VTs implicitly deletes the rules
 associated with them):
 
-fvctl deleteSlice alice
-fvctl deleteSlice bob
+vectl deleteSlice alice
 
-You can now define a new VT called charlie that will catch all flows from all 
+vectl deleteSlice bob
+
+where vectl is the VeRTIGO's configuration tool, a modified version of the
+original FlowVisor's fvctl script with some additional options that can be used
+to define and instantiate Virtual Links.
+
+You can now define a new VT called charlie that will catch all flows from all
 switches with commands:
 
-fvctl createSlice charlie tcp:yourhost.com:10001 slice-email@yourhost.com
-fvctl addFlowSpace any 10 any "Slice:charlie=4"
+vectl createSlice charlie tcp:yourhost.com:10001 slice-email@yourhost.com
 
-As anticipated in Section , we have modified the fvctl script by adding some 
-additional options that can be used to define and instantiate Virtual Links. 
+vectl addFlowSpace any 10 any "Slice:charlie=4"
 
-For instance, the instantiation of a Virtual Link can be performed through
-command:
+Virtual links can be instantiated by using the addLink command as follows:
 
-./fvctl.sh addLink charlie 00:00:00:00:00:00:00:01/1-00:00:00:00:00:00:00:02/1,
+vectl addLink charlie 00:00:00:00:00:00:00:01/1-00:00:00:00:00:00:00:02/1,
 00:00:00:00:00:00:00:02/2-00:00:00:00:00:00:00:03/1
 
-
-Where charlie is the name of the VT and the couple 00:00:…:0X/Y represents the 
+Where charlie is the name of the VT and the couple 00:00:…:0X/Y represents the
 datapath_id of a switch plus a physical port number. This command above creates
- a direct connection (Virtual Link) between switches with datapath_id 
- 00:00:00:00:00:00:00:01 and 00:00:00:00:00:00:00:03 passing through 
- 00:00:00:00:00:00:00:02.
+a direct connection (Virtual Link) between switches with datapath_id
+00:00:00:00:00:00:00:01 and 00:00:00:00:00:00:00:03 passing through
+00:00:00:00:00:00:00:02.
+
+
+
+STATISTICS COLLECTION MODULE CONFIGURATION
+
+From version 0.2.0, VeRTIGO includes an internal module which collects
+statistics of traffic crossing the network. Statistics samples are collected for
+each enabled physical port and are not divided per slice. Statistics are stored
+to an internal database and can be retrieved through the vectl command. Follows
+the list of available operations:
+
+vectl enableVTPlannerStats <enable>
+
+Enable/disable the stats collection process. "0" means disabled, "1" or above
+means enabled.
+
+vectl setVTPlannerTimers <timer> <exp_time>
+
+Sets timers for the stats collection process. timer is the time between two
+stats requests, exp_time is the history size in time units. The default time
+unit is "seconds", but also minutes, hours, days and weeks can be used
+(s=seconds, m=minutes, h=hours, d=days, w=weeks).
+
+example: vectl setVTPlannerTimers 5s 1w
+
+vectl getVTPlannerTimers
+
+Retrieves and prints timer and exp_timer (see command above).
+
+vectl getVTPlannerSwitchInfo <switchid>
+
+Retrieves the switch info. is the switch datapath_id with format
+02:08:02:08:00:00:00:01. Value "all" is also allowed (without quotes) and
+returns the info of all the switches in the network. Refer to the OpenFlow
+Specification manual v1.0.0 in order to interpret some of the returned values.
+
+vectl getVTPlannerPortInfo <switchid> <port>
+
+Retrieves the info of one or all ports of a switch. Available ports and switches
+can be obtained from the output of command getVTPlannerSwitchInfo described
+above. can be a single port number or the string "all". The meaning of returned
+values CONFIG,FEATURES e STATE can be found at pages 17,18 and 19 of OpenFlow
+Specification v1.0.0.
+
+vectl getVTPlannerPortStats <switchid> <port> <datetime1> <datetime2>
+
+Retrieves the collected stats of one port collected between and . Value of and
+must be inserted in the format YYYY.MM.DD.hh.mm.ss, for instance:
+
+vectl getVTPlannerPortStats 02:08:02:08:00:00:00:01 4 2012.10.15.00.00.00
+2012.10.15.23.59.59
 
 
 

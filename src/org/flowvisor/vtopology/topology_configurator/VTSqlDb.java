@@ -5,19 +5,23 @@ package org.flowvisor.vtopology.topology_configurator;
 
 import java.sql.*;
 
-import org.flowvisor.FlowVisor;
+import org.flowvisor.VeRTIGO;
 import org.flowvisor.config.ConfigError;
 import org.flowvisor.events.FVEventHandler;
 import org.flowvisor.events.VTEvent;
+import org.flowvisor.events.VTLLDPEvent;
 import org.flowvisor.exceptions.UnhandledEvent;
 import org.flowvisor.flows.FlowSpaceUtil;
 import org.flowvisor.log.FVLog;
 import org.flowvisor.log.LogLevel;
+import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFPort;
 
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 
 
@@ -36,6 +40,11 @@ public class VTSqlDb {
 		}
 		return instance;
  	}
+	
+	private class nextHopClass {
+		Long switchId;
+		Integer inputPort;
+	}
  	
 	// JDBC driver name and database URL
 	private String JDBC_DRIVER;
@@ -49,10 +58,15 @@ public class VTSqlDb {
 	
 	private class statements {
 		PreparedStatement selectFlowTableOne;
+		PreparedStatement selectFlowTableTwo;
+		PreparedStatement selectFlowTableThree;
+		PreparedStatement selectFlowTableFour;
 		PreparedStatement deleteFlowTableOne;
 		PreparedStatement deleteFlowTableTwo;
 		PreparedStatement deleteFlowTableThree;
 		PreparedStatement deleteFlowTableFour;
+		PreparedStatement deleteFlowTableFive;
+		PreparedStatement deleteFlowTableSix;
 		PreparedStatement insertFlowTable;
 	
 		PreparedStatement selectSwitchTableOne;
@@ -68,6 +82,8 @@ public class VTSqlDb {
 		PreparedStatement selectSwitchTableEleven;
 		PreparedStatement selectSwitchTableTwelve;
 		PreparedStatement selectSwitchTableThirteen;
+		PreparedStatement selectSwitchTableFourteen;
+		PreparedStatement selectSwitchTableFifthteen;
 		PreparedStatement deleteSwitchTableOne;
 		PreparedStatement deleteSwitchTableTwo;
 		PreparedStatement updateSwitchTable;
@@ -80,6 +96,7 @@ public class VTSqlDb {
 		
 		PreparedStatement selectLinkTableOne;
 		PreparedStatement selectLinkTableTwo;
+		PreparedStatement selectLinkTableThree;
 		PreparedStatement deleteLinkTableOne;
 		PreparedStatement deleteLinkTableTwo;
 		PreparedStatement insertLinkTable;
@@ -218,15 +235,20 @@ public class VTSqlDb {
 		stmt.execute ("DROP TABLE IF EXISTS flowTable");
 	    stmt.execute ("CREATE TABLE flowTable (" +
 	    		"sliceId VARCHAR(40) NOT NULL," +
+	    		"switchId BIGINT NOT NULL," +
 	    		"linkId INT NOT NULL," +
 	    		"flowMatch VARCHAR(200) NOT NULL," +
+	    		"priority INT NOT NULL," +
 	    		"nextHop BIGINT NOT NULL," +
+	    		"nextHopInputPort INT NOT NULL," +
 	    		"isFlowMod BOOLEAN NOT NULL," +
 	    		"idleTO INT NOT NULL," +
 	    		"hardTO INT NOT NULL," +
-	    		"PRIMARY KEY (sliceId,linkId,flowMatch,nextHop))");
+	    		"PRIMARY KEY (sliceId,switchId, linkId,flowMatch,nextHop,nextHopInputPort))");
 	    stmt.execute ("CREATE INDEX flowIndex ON flowTable (sliceId, linkId, nextHop)");
-	    stmt.execute ("CREATE INDEX flowIndex2 ON flowTable (sliceId, flowMatch, nextHop)");
+	    stmt.execute ("CREATE INDEX flowIndex2 ON flowTable (sliceId, nextHop, flowMatch)");
+	    stmt.execute ("CREATE INDEX flowIndex3 ON flowTable (sliceId, switchId)");
+	    stmt.execute ("CREATE INDEX flowIndex4 ON flowTable (sliceId, switchId, flowMatch)");
 	    //stmt.execute ("CREATE INDEX flowIndexProva ON flowTable (sliceId, nextHop)");
 		
 	    // Create switch info table
@@ -290,12 +312,21 @@ public class VTSqlDb {
 	    
 	    
 	    //Variables: sliceId, nextHop, flowMatch
-	    statements.selectFlowTableOne = conn.prepareStatement("SELECT linkId, isFlowMod, idleTO, hardTO FROM flowTable " +
+	    statements.selectFlowTableOne = conn.prepareStatement("SELECT linkId, nextHopInputPort, isFlowMod, idleTO, hardTO FROM flowTable " +
 				"WHERE sliceId = ? and nextHop = ? and flowMatch = ? LIMIT 1");
-		
-		//Variables: sliceId, nextHop, flowMatch, linkId
-	    statements.deleteFlowTableOne = conn.prepareStatement("DELETE FROM flowTable " +
-				"WHERE sliceId = ? and nextHop = ? and flowMatch = ? and linkId = ? ");
+	    
+	    //Variables: sliceId, nextHop
+	    statements.selectFlowTableTwo = conn.prepareStatement("SELECT switchId, flowMatch, priority, linkId, isFlowMod, nextHopInputPort, idleTO, hardTO FROM flowTable " +
+				"WHERE sliceId = ? and nextHop = ? ORDER BY priority DESC");
+	    
+	    //Variables: sliceId, switchId, flowmatch
+	    statements.selectFlowTableThree = conn.prepareStatement("SELECT  idleTO FROM flowTable " +
+				"WHERE sliceId = ? and switchId = ? and flowmatch = ?");
+	    
+	    //Variables: sliceId, switchId
+	    statements.selectFlowTableFour = conn.prepareStatement("SELECT  nextHop, flowMatch FROM flowTable " +
+				"WHERE sliceId = ? and switchId = ?");
+	    
 		
 	    //Variables: sliceId, switchId, phyPortId, virtPortId, accessPort, linkId, endPoint, status
 	    statements.insertSwitchTable = conn.prepareStatement("INSERT INTO switchTable " +
@@ -309,17 +340,13 @@ public class VTSqlDb {
 		statements.selectSwitchTableTwo = conn.prepareStatement("SELECT endPoint FROM switchTable " +
 				"WHERE sliceId = ? and switchId = ? and linkId = ? and status = true ORDER BY phyPortId LIMIT 1");
 		
-		//Variables: sliceId, linkId, flowMatch, nextHop, isFlowMod, idleTO, hardTO
+		//Variables: sliceId, switchId, linkId, flowMatch, priority, nextHop, nextHopInPort, isFlowMod, idleTO, hardTO
 		statements.insertFlowTable = conn.prepareStatement("INSERT INTO flowTable " +
-				"VALUES (?,?,?,?,?,?,?)");
+				"VALUES (?,?,?,?,?,?,?,?,?,?)");
 
 		//Variables: sliceId
 		statements.selectSwitchTableThree = conn.prepareStatement("SELECT linkId FROM linkTable " +
 				"WHERE sliceId = ? ORDER BY linkId DESC LIMIT 1");
-		
-		//Variables: sliceId
-		statements.deleteFlowTableTwo = conn.prepareStatement("DELETE FROM flowTable " +
-				"WHERE sliceId = ?");
 
 		//Variables: sliceId
 		statements.deleteSwitchTableOne = conn.prepareStatement("DELETE FROM switchTable " +
@@ -348,6 +375,10 @@ public class VTSqlDb {
 		//Variables: sliceId, linkId, switchId, outPortId
 		statements.selectLinkTableOne = conn.prepareStatement("SELECT nextHop FROM linkTable " +
 				"WHERE sliceId = ? and linkId = ? and switchId = ? and outPortId = ? LIMIT 1");
+		
+		//Variables: sliceId, linkId, switchId, nextHop
+		statements.selectLinkTableThree = conn.prepareStatement("SELECT outPortId FROM linkTable " +
+				"WHERE sliceId = ? and linkId = ? and switchId = ? and nextHop = ? LIMIT 1");
 
 		//Variables: sliceId, switchId
 		statements.selectSwitchTableFour = conn.prepareStatement("SELECT phyPortId, virtPortId, endPoint FROM switchTable " +
@@ -393,13 +424,31 @@ public class VTSqlDb {
 		statements.selectSwitchTableTwelve = conn.prepareStatement("SELECT switchId, phyPortId, virtPortId, endPoint FROM switchTable " +
 				"WHERE sliceId = ? and linkId = ?"); 
 		
+// deleteFlowTable statements		
+		
+		//Variables: sliceId, nextHop, flowMatch, linkId
+	    statements.deleteFlowTableOne = conn.prepareStatement("DELETE FROM flowTable " +
+				"WHERE sliceId = ? and nextHop = ? and flowMatch = ? and linkId = ? ");
+	    
+	    //Variables: sliceId
+	  	statements.deleteFlowTableTwo = conn.prepareStatement("DELETE FROM flowTable " +
+	  				"WHERE sliceId = ?");
+		
 		//Variables: sliceId, linkId
 	    statements.deleteFlowTableThree = conn.prepareStatement("DELETE FROM flowTable " +
 				"WHERE sliceId = ? and linkId = ?");
 	    
-	  //Variables: sliceId, flowMatch
+	    //Variables: sliceId, flowMatch
 	    statements.deleteFlowTableFour = conn.prepareStatement("DELETE FROM flowTable " +
 				"WHERE sliceId = ? and flowMatch = ?");
+	    
+	    //Variables: sliceId, switchId, flowMatch
+	    statements.deleteFlowTableFive = conn.prepareStatement("DELETE FROM flowTable " +
+				"WHERE sliceId = ? and switchId = ? and flowMatch = ?");
+	    
+	    //Variables: sliceId, switchId
+	    statements.deleteFlowTableSix = conn.prepareStatement("DELETE FROM flowTable " +
+				"WHERE sliceId = ? and switchId = ?");
 		
 	    //Variables: sliceId, linkId
 		statements.deleteSwitchTableTwo = conn.prepareStatement("DELETE FROM switchTable " +
@@ -444,6 +493,13 @@ public class VTSqlDb {
 		statements.selectSwitchTableThirteen = conn.prepareStatement("SELECT virtPortId, accessPort, status FROM switchTable " +
 				"WHERE sliceId = ? and switchId = ? and phyPortId = ?");
 		
+		//Variables: sliceId, switchId
+		statements.selectSwitchTableFourteen = conn.prepareStatement("SELECT linkId FROM switchTable " +
+				"WHERE sliceId = ? and switchId = ? and virtPortId = ? and status = true");
+		//Variables: sliceId, switchId
+		statements.selectSwitchTableFifthteen = conn.prepareStatement("SELECT switchId, virtPortId FROM switchTable " +
+				"WHERE sliceId = ? and linkId = ? and switchId != ? and endPoint = true and status = true");
+		
 	    conn.commit();
 	    if(stmt!=null)
 	        stmt.close();
@@ -485,6 +541,7 @@ public class VTSqlDb {
 					statements.insertLinkTable.setInt(4, currentHop.dstPort);
 					statements.insertLinkTable.setLong(5, srcSwitch);
 					statements.insertLinkTable.executeUpdate();
+					
 				}
 			}
 		}
@@ -646,7 +703,7 @@ public class VTSqlDb {
 			}
 		}
 		
-		List<FVEventHandler> handlers = FlowVisor.getInstance().getHandlersCopy();
+		List<FVEventHandler> handlers = VeRTIGO.getInstance().getHandlersCopy();
 		for (VTLinkStatus linkStatus : linkStatusList) {
 			for (FVEventHandler handler : handlers) {
 				if (handler.getName().contains("slicer_") && handler.getName().contains(sliceId) &&
@@ -761,7 +818,7 @@ public class VTSqlDb {
 				statements.insertSwitchTable.setBoolean(7, endPoint);
 				statements.insertSwitchTable.setBoolean(8, true);
 				FVLog.log(LogLevel.DEBUG, null, "vtopology: addVirtualLink: insertSwitchTable: insert => "
-						+ " sliceId = " + sliceId + " switchId = " + currentSwitch + " phyPortId = " + currentPort
+						+ " sliceId = " + sliceId + " switchId = " + Long.toHexString(currentSwitch) + " phyPortId = " + currentPort
 						 + " virtPortId = " + virtPortId + " isAccess = false linkId = " + currentLink.linkId
 						 + " endPoint = " + endPoint + " status = true");
 				statements.insertSwitchTable.execute();
@@ -772,8 +829,8 @@ public class VTSqlDb {
 				statements.insertLinkTable.setInt(4, currentPort);
 				statements.insertLinkTable.setLong(5, nextHop);
 				FVLog.log(LogLevel.DEBUG, null, "vtopology: addVirtualLink: insertLinkTable: insert => "
-						+ " sliceId = " + sliceId + " linkId = " + currentLink.linkId + " switchId = " + currentSwitch
-						 + " phyPortId = " + currentPort + " nextHop = " + nextHop);
+						+ " sliceId = " + sliceId + " linkId = " + currentLink.linkId + " switchId = " + Long.toHexString(currentSwitch)
+						 + " phyPortId = " + currentPort + " nextHop = " + Long.toHexString(nextHop));
 				statements.insertLinkTable.executeUpdate();	
 			}
 		}
@@ -811,7 +868,7 @@ public class VTSqlDb {
 				linkStatus.add(linkInfo);
 			}
 			FVLog.log(LogLevel.DEBUG, null, "vtopology: deleteVirtualLink: selectSwitchTableTwelve: results => "
-					+ " switchId = " + currentSwitch + " virtPortId = " + virtPortId + " endPoint = " + rs.getBoolean("endPoint"));
+					+ " switchId = " + Long.toHexString(currentSwitch) + " virtPortId = " + virtPortId + " endPoint = " + rs.getBoolean("endPoint"));
 			switchportList.add(currentSwitch+"/"+phyPortId);
 		}
 		
@@ -833,7 +890,7 @@ public class VTSqlDb {
 			activeFlows.put(currentSwitch, flowList);
 			
 			FVLog.log(LogLevel.DEBUG, null, "vtopology: deleteVirtualLink: selectActiveFlowTableOne: results => "
-					+ " switchId = " + currentSwitch + " flowMatch = " + flowMatch);
+					+ " switchId = " + Long.toHexString(currentSwitch) + " flowMatch = " + flowMatch);
 		}
 		
 		statements.deleteSwitchTableTwo.setString(1, sliceId);
@@ -902,12 +959,12 @@ public class VTSqlDb {
 			statements.selectLinkTableTwo.setLong(2,switchId);
 			statements.selectLinkTableTwo.setInt(3,portId);
 			FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlDbUpdatePortStatus: selectLinkTableTwo: variables => "
-					+ " sliceId = " + sliceId + " switchId = " + switchId + " phyPortId = " + portId);
+					+ " sliceId = " + sliceId + " switchId = " + Long.toHexString(switchId) + " phyPortId = " + portId);
 			rs = statements.selectLinkTableTwo.executeQuery();
 			while (rs.next ()){
 				nextHop = rs.getLong("nextHop");
 				FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlDbUpdatePortStatus: selectLinkTableTwo: results => "
-						+ " nextHop = " + nextHop);
+						+ " nextHop = " + Long.toHexString(nextHop));
 			}
 		}
 		else
@@ -919,7 +976,7 @@ public class VTSqlDb {
 		statements.selectSwitchTableEight.setInt(3,portId);
 		statements.selectSwitchTableEight.setBoolean(4,currentStatus);
 		FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlDbUpdatePortStatus: selectSwitchTableEight: variables => "
-				+ " sliceId = " + sliceId + " switchId = " + switchId + " phyPortId = " + portId + " status = " + currentStatus);
+				+ " sliceId = " + sliceId + " switchId = " + Long.toHexString(switchId) + " phyPortId = " + portId + " status = " + currentStatus);
 		rs = statements.selectSwitchTableEight.executeQuery();
 		LinkedList<Integer> virtPortList = new LinkedList<Integer>();
 		while (rs.next ()){
@@ -974,7 +1031,7 @@ public class VTSqlDb {
 						vtConfig.classifierToVirtPortMap.put(currentSwitch, portList);
 					}
 					FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlDbUpdatePortStatus: selectSwitchTableNine: results => "
-							+ " switchId = " + currentSwitch + " virtPortId = " + virtPortId);
+							+ " switchId = " + Long.toHexString(currentSwitch) + " virtPortId = " + virtPortId);
 					UpdateLinkStatus(portStatus, sliceId, currentSwitch, currentLink, virtPortId);
 				}
 			}
@@ -994,7 +1051,7 @@ public class VTSqlDb {
 		statements.selectSwitchTableTen.setLong(3,switchId);
 		statements.selectSwitchTableTen.setLong(4,nextHop);
 		FVLog.log(LogLevel.DEBUG, null, "vtopology: CheckLinkStatus: selectSwitchTableTen: variables => "
-				+ " sliceId = " + sliceId + " linkId = " + linkId + " switchId = " + switchId + " nextHop = " + nextHop);
+				+ " sliceId = " + sliceId + " linkId = " + linkId + " switchId = " + Long.toHexString(switchId) + " nextHop = " + Long.toHexString(nextHop));
 		rs = statements.selectSwitchTableTen.executeQuery();
 		while (rs.next ()){
 			boolean tmpStatus = rs.getBoolean("status");
@@ -1017,12 +1074,94 @@ public class VTSqlDb {
 		statements.updateSwitchTable.setInt(4,linkId);
 		statements.updateSwitchTable.setInt(5,virtPortId);
 		FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlDbUpdatePort: updateSwitchTable: update portStatus = "+ newStatus 
-				+" with variables => sliceId = " + sliceId + " switchId = " + switchId + " linkId = " + linkId
+				+" with variables => sliceId = " + sliceId + " switchId = " + Long.toHexString(switchId) + " linkId = " + linkId
 				+" virtPortId = " + virtPortId);
 		statements.updateSwitchTable.executeUpdate();
 		return ret;
 	}
-	
+/**
+ * @name sqlDbGetLinkId
+ * @authors roberto.doriguzzi matteo.gerola
+ * @info Returns the identifier of the link crossed by the flow
+ * @param String sliceId = name of the slice
+ * @param long switchId = dpid of the switch
+ * @param String flowMatch = packet match (L2+L3)
+ * @param phyPortList = list of the physical ports of the switch in this slice
+ * @return isEndPoint = TRUE if the switch is an end point, FALSE otherwise
+ * @return phyToVirtPortMap = mapping between physical and virtual ports (only if isEnd Point == TRUE)
+ * @return phyPortId = physical output port (only if isEnd Point == FALSE)
+ * @return ret = boolean return code (TRUE: ok, FALSE: error in the function) 
+ * @exception SQLException   
+ */
+	public int sqlDbGetLinkId(String sliceId, long switchId, String flowMatch, int inputPort, VTConfigInterface vtConfig) 
+	throws SQLException {
+		ResultSet rs = null;
+		int linkId = 0;
+		short count = 0;
+		OFMatch tmpMatch = new OFMatch();
+		
+		if (!flowMatch.equals("OFMatch[]")) {
+			statements.selectFlowTableOne.setString(1,sliceId);
+			statements.selectFlowTableOne.setLong(2,switchId);
+			statements.selectFlowTableOne.setString(3,flowMatch);
+			rs = statements.selectFlowTableOne.executeQuery();
+			
+			//trying with the exact match
+			while (rs.next ()){
+				if(rs.getInt("nextHopInputPort") == inputPort){
+					linkId = rs.getInt("linkId");
+					vtConfig.isFlowMod = rs.getBoolean("isFlowMod");
+					vtConfig.idleTO = rs.getInt("idleTO");
+					vtConfig.hardTO = rs.getInt("hardTO");
+					count++;
+				}
+			}
+			//no exact match: looking for other entries
+			if(count == 0)
+			{
+				OFMatch inputMatch = new OFMatch();
+				inputMatch.fromString(flowMatch);
+				statements.selectFlowTableTwo.setString(1,sliceId);
+				statements.selectFlowTableTwo.setLong(2,switchId);
+				rs = statements.selectFlowTableTwo.executeQuery();
+				while (rs.next ()){
+					String tmp_flowMatch = rs.getString("flowMatch");
+					tmpMatch.fromString(tmp_flowMatch); 
+					if(tmpMatch.subsumes(inputMatch) && tmp_flowMatch.length() > 0 && rs.getInt("nextHopInputPort") == inputPort){			
+							linkId = rs.getInt("linkId");
+							vtConfig.isFlowMod = rs.getBoolean("isFlowMod");
+							vtConfig.idleTO = rs.getInt("idleTO");
+							vtConfig.hardTO = rs.getInt("hardTO");
+							count++;
+							break;
+					}
+					
+				}
+			}
+			
+			// removing the packet_out entries, flow_mod ones are removed through flow_removed messages
+			if (!vtConfig.isFlowMod) {
+				if(linkId == 0) {
+					statements.deleteFlowTableFive.setString(1, sliceId);
+					statements.deleteFlowTableFive.setLong(2, switchId);
+					statements.deleteFlowTableFive.setString(3,flowMatch);
+					int rows = statements.deleteFlowTableFive.executeUpdate();
+				}
+				else {
+					statements.deleteFlowTableOne.setString(1, sliceId);
+					statements.deleteFlowTableOne.setLong(2, switchId);
+					statements.deleteFlowTableOne.setString(3,flowMatch);
+					statements.deleteFlowTableOne.setInt(4,linkId);
+					int rows = statements.deleteFlowTableOne.executeUpdate();
+				}
+				
+			}
+			conn.commit();
+			rs.close ();	 
+			
+		}	
+		return linkId;
+	}
 /**
  * @name sqlDbGetSwitchInfo
  * @authors roberto.doriguzzi matteo.gerola
@@ -1043,68 +1182,36 @@ public class VTSqlDb {
 	throws SQLException {
 		ResultSet rs = null;
 		boolean ret = true;
-		int linkId = 0;
-		
-		if (!flowMatch.equals("OFMatch[]")) {
-			statements.selectFlowTableOne.setString(1,sliceId);
-			statements.selectFlowTableOne.setLong(2,switchId);
-			statements.selectFlowTableOne.setString(3,flowMatch);
-			FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlDbGetSwitchInfo: selectFlowTableOne: variables => "
-					+ " sliceId = " + sliceId + " switchId = " + switchId + " flowMatch = " + flowMatch);
-			rs = statements.selectFlowTableOne.executeQuery();
-			while (rs.next ()){
-				linkId = rs.getInt("linkId");
-				vtConfig.isFlowMod = rs.getBoolean("isFlowMod");
-				vtConfig.idleTO = rs.getInt("idleTO");
-				vtConfig.hardTO = rs.getInt("hardTO");
-				FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlDbGetSwitchInfo: selectFlowTableOne: results => "
-						+ " linkId = " + linkId + " isFlowMod = " + vtConfig.isFlowMod 
-						+ " idleTO = " + vtConfig.idleTO + " hardTO = " + vtConfig.hardTO);
-			}
-			
-			if (linkId != 0) {
-				statements.deleteFlowTableOne.setString(1, sliceId);
-				statements.deleteFlowTableOne.setLong(2, switchId);
-				statements.deleteFlowTableOne.setString(3,flowMatch);
-				statements.deleteFlowTableOne.setInt(4,linkId);
-				FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlDbGetSwitchInfo: deleteFlowTableOne: variables => "
-						+ " sliceId = " + sliceId + " switchId = " + switchId + " flowMatch = " + flowMatch
-						+ " linkId = " + linkId);
-				statements.deleteFlowTableOne.execute();
-			}
-			conn.commit();
-			rs.close ();
-		}
-		
 		if (!vtConfig.phyPortList.isEmpty()) {
-			if (vtConfig.phyPortList.contains((int)OFPort.OFPP_ALL.getValue())) {
+			if (vtConfig.phyPortList.contains((int)OFPort.OFPP_ALL.getValue()) || 
+				vtConfig.phyPortList.contains((int)OFPort.OFPP_FLOOD.getValue())) {
 				statements.selectSwitchTableFour.setString(1, sliceId);
 				statements.selectSwitchTableFour.setLong(2, switchId);
 				FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlDbGetSwitchInfo: selectSwitchTableFour: variables => "
-						+ " sliceId = " + sliceId + " switchId = " + switchId);
+						+ " sliceId = " + sliceId + " switchId = " + Long.toHexString(switchId));
 				sqlGetSwitchInfoRSParsing(statements.selectSwitchTableFour.executeQuery(), vtConfig);
 				}
 			else {
 				for (int currentPort : vtConfig.phyPortList) {
 					statements.selectSwitchTableFive.setString(1, sliceId);
 					statements.selectSwitchTableFive.setLong(2, switchId);
-					statements.selectSwitchTableFive.setInt(3, linkId);
+					statements.selectSwitchTableFive.setInt(3, vtConfig.linkId);
 					statements.selectSwitchTableFive.setInt(4, currentPort);
 					FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlDbGetSwitchInfo: selectSwitchTableFive: variables => "
-							+ " sliceId = " + sliceId + " switchId = " + switchId + " linkId = " + linkId
+							+ " sliceId = " + sliceId + " switchId = " + Long.toHexString(switchId) + " linkId = " + vtConfig.linkId
 							+ " phyPortId = " + currentPort);
 					sqlGetSwitchInfoRSParsing(statements.selectSwitchTableFive.executeQuery(), vtConfig);
 				}
 			}
 			
-			//If the switch isn't and end point of a link, 
+			//If the switch is not an end point of a link, 
 			//find the physical output port to pass this info to the link_broker
-			if (vtConfig.isEndPoint == false && linkId != 0 && vtConfig.phyPortList.size() == 1) {
+			if (vtConfig.isEndPoint == false && vtConfig.linkId != 0 && vtConfig.phyPortList.size() == 1) {
 				statements.selectSwitchTableOne.setString(1, sliceId);
 				statements.selectSwitchTableOne.setLong(2, switchId);
-				statements.selectSwitchTableOne.setInt(3, linkId);
+				statements.selectSwitchTableOne.setInt(3, vtConfig.linkId);
 				FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlDbGetSwitchInfo: selectSwitchTableOne: variables => "
-						+ " sliceId = " + sliceId + " switchId = " + switchId + " linkId = " + linkId);
+						+ " sliceId = " + sliceId + " switchId = " + Long.toHexString(switchId) + " linkId = " + vtConfig.linkId);
 				rs = statements.selectSwitchTableOne.executeQuery();
 				while (rs.next ()){
 					if (!vtConfig.phyToVirtPortMap.containsKey(rs.getInt("phyPortId"))) {
@@ -1117,9 +1224,9 @@ public class VTSqlDb {
 				if (vtConfig.phyPortId == 0) 
 					ret = false;
 				else {
-					HashMap<Integer, Long> linkSwitchMap = new HashMap<Integer, Long>();
-					linkSwitchMap.put(linkId,sqlGetNextHop(sliceId, linkId, switchId, vtConfig.phyPortId));
-					sqlUpdateFlowDb(sliceId, flowMatch, linkSwitchMap, vtConfig);
+					HashMap<Integer, nextHopClass> linkSwitchMap = new HashMap<Integer, nextHopClass>();
+					linkSwitchMap.put(vtConfig.linkId,sqlGetNextHop(sliceId, vtConfig.linkId, switchId, vtConfig.phyPortId));
+					sqlUpdateFlowDb(sliceId, switchId, flowMatch, 0xFFFF, linkSwitchMap, vtConfig);
 				}
 				rs.close ();
 			}			
@@ -1127,9 +1234,9 @@ public class VTSqlDb {
 		else {
 			statements.selectSwitchTableTwo.setString(1, sliceId);
 			statements.selectSwitchTableTwo.setLong(2, switchId);
-			statements.selectSwitchTableTwo.setInt(3, linkId);
+			statements.selectSwitchTableTwo.setInt(3, vtConfig.linkId);
 			FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlDbGetSwitchInfo: selectSwitchTableTwo: variables => "
-					+ " sliceId = " + sliceId + " switchId = " + switchId + " linkId = " + linkId);
+					+ " sliceId = " + sliceId + " switchId = " + Long.toHexString(switchId) + " linkId = " + vtConfig.linkId);
 			rs = statements.selectSwitchTableTwo.executeQuery();
 			while (rs.next()) {
 				vtConfig.isEndPoint = rs.getBoolean("endPoint");
@@ -1152,6 +1259,7 @@ public class VTSqlDb {
 			virtPortList.clear();
 			vtConfig.isEndPoint = rs.getBoolean("endPoint");
 			phyPortId = rs.getInt("phyPortId");
+			
 			if (vtConfig.phyToVirtPortMap.containsKey(phyPortId)) {
 				virtPortList = vtConfig.phyToVirtPortMap.get(phyPortId);
 				virtPortList.add(rs.getInt("virtPortId"));
@@ -1186,18 +1294,17 @@ public class VTSqlDb {
  * @return ret = boolean return code (TRUE: ok, FALSE: error in the function)
  * @exception SQLException  
  */
-	public boolean sqlGetVirttoPhyPortMap(String sliceId, long switchId, String flowMatch, VTConfigInterface vtConfig) 
+	public boolean sqlGetVirttoPhyPortMap(String sliceId, long switchId, String flowMatch, int priority, VTConfigInterface vtConfig) 
 	throws SQLException {
 		boolean ret = true;
-		HashMap<Integer, Long> linkSwitchMap = new HashMap<Integer, Long>();
+		HashMap<Integer, nextHopClass> linkSwitchMap = new HashMap<Integer, nextHopClass>();
 		HashMap<Integer, Integer> linkTmpMap = new HashMap<Integer, Integer>();
 		if (vtConfig.virtPortList.contains((int)OFPort.OFPP_ALL.getValue()) || 
-				vtConfig.virtPortList.contains((int)OFPort.OFPP_ALL.getValue()) || 
 				vtConfig.virtPortList.contains((int)OFPort.OFPP_FLOOD.getValue())) {
 				statements.selectSwitchTableSix.setString(1, sliceId);
 				statements.selectSwitchTableSix.setLong(2, switchId);
 				FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlGetVirttoPhyPortMap: selectSwitchTableSix: variables => "
-						+ " sliceId = " + sliceId + " switchId = " + switchId);
+						+ " sliceId = " + sliceId + " switchId = " + Long.toHexString(switchId));
 				sqlVirttoPhyRSParsing (statements.selectSwitchTableSix.executeQuery(), linkTmpMap, vtConfig);
 			}
 		else {
@@ -1206,7 +1313,7 @@ public class VTSqlDb {
 				statements.selectSwitchTableSeven.setLong(2, switchId);
 				statements.selectSwitchTableSeven.setLong(3, currentPort);
 				FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlGetVirttoPhyPortMap: selectSwitchTableSeven: variables => "
-						+ " sliceId = " + sliceId + " switchId = " + switchId + " virtPortId = " + currentPort);
+						+ " sliceId = " + sliceId + " switchId = " + Long.toHexString(switchId) + " virtPortId = " + currentPort);
 				sqlVirttoPhyRSParsing (statements.selectSwitchTableSeven.executeQuery(), linkTmpMap, vtConfig);
 			}
 			if (vtConfig.virtPortId != 0) {
@@ -1214,17 +1321,20 @@ public class VTSqlDb {
 				statements.selectSwitchTableSeven.setLong(2, switchId);
 				statements.selectSwitchTableSeven.setLong(3, vtConfig.virtPortId);
 				FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlGetVirttoPhyPortMap: selectSwitchTableSeven: variables => "
-						+ " sliceId = " + sliceId + " switchId = " + switchId + " virtPortId = " + vtConfig.virtPortId);
+						+ " sliceId = " + sliceId + " switchId = " + Long.toHexString(switchId) + " virtPortId = " + vtConfig.virtPortId);
 				sqlVirttoPhyRSParsing (statements.selectSwitchTableSeven.executeQuery(), linkTmpMap, vtConfig);
 			}
 		}
 		
 		Set<Integer> keySetLinkTmpMap = linkTmpMap.keySet();
-		for(int currentLink:keySetLinkTmpMap)
+		long nextHop;
+		int nextHop_inputPort;
+		for(int currentLink:keySetLinkTmpMap) {
 			linkSwitchMap.put(currentLink, sqlGetNextHop(sliceId, currentLink, switchId, linkTmpMap.get(currentLink)));
+		}
 
 		if (!flowMatch.equals("OFMatch[]")) {
-			sqlUpdateFlowDb(sliceId, flowMatch, linkSwitchMap, vtConfig);
+			sqlUpdateFlowDb(sliceId, switchId, flowMatch, priority, linkSwitchMap, vtConfig);
 			insertActiveFlow(sliceId, flowMatch, linkSwitchMap, switchId);
 		}
 		return ret;
@@ -1235,13 +1345,17 @@ public class VTSqlDb {
 	throws SQLException {
 		boolean ret = true;
 		int virtPortId;
+		
 		while (rs.next ()){
 			virtPortId = rs.getInt("virtPortId");
+			
+			//mapping the input port
 			if (virtPortId == vtConfig.virtPortId) {
 				vtConfig.phyPortId = (short)rs.getInt("phyPortId");
 				FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlGetVirttoPhyPortMap: sqlVirttoPhyRSParsing: results => "
 						+ " Match virtPortId = " + virtPortId + " Match phyPortId = " + vtConfig.phyPortId);
 			}
+			//mapping the output ports in the actions
 			else {	
 				vtConfig.virtToPhyPortMap.put(virtPortId, rs.getInt("phyPortId"));
 				FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlGetVirttoPhyPortMap: sqlVirttoPhyRSParsing: results => "
@@ -1266,33 +1380,35 @@ public class VTSqlDb {
  * @param Boolean isFlowMod = if TRUE, the flowMatch belong to a flowMod action, is FALSE to an output action
  * @param int idleTO = flowMod idle timeout. If isFlowMod is TRUE, 
  * this value is used by the linkBroker when it creates the flowMod action
- * @param int hardTO = flowMod hard timeout. If isFlowMod is TRUE, 
- * this value is used by the linkBroker when it creates the flowMod action
  * @param HashMap<Integer,Long> linkSwitchMap = map between a list of links and related nextHop switches      
  * @exception SQLException
  */
-	private void sqlUpdateFlowDb(String sliceId, String flowMatch, HashMap<Integer,Long> linkSwitchMap, VTConfigInterface vtConfig) 
+	private void sqlUpdateFlowDb(String sliceId, long switchId, String flowMatch, int priority, HashMap<Integer, nextHopClass> linkSwitchMap, VTConfigInterface vtConfig) 
 	throws SQLException {		
 		Set<Integer> keySetPortMap = linkSwitchMap.keySet();
 		for (int linkId : keySetPortMap) {
 			statements.insertFlowTable.setString(1, sliceId);
-			statements.insertFlowTable.setInt(2, linkId);
-			statements.insertFlowTable.setString(3, flowMatch);
-			statements.insertFlowTable.setLong(4, linkSwitchMap.get(linkId));
-			statements.insertFlowTable.setBoolean(5, vtConfig.isFlowMod);
-			statements.insertFlowTable.setInt(6, vtConfig.idleTO);
-			statements.insertFlowTable.setInt(7, vtConfig.hardTO);
+			statements.insertFlowTable.setLong(2, switchId);
+			statements.insertFlowTable.setInt(3, linkId);
+			statements.insertFlowTable.setString(4, flowMatch);
+			statements.insertFlowTable.setInt(5, priority);
+			statements.insertFlowTable.setLong(6, linkSwitchMap.get(linkId).switchId);
+			statements.insertFlowTable.setLong(7, linkSwitchMap.get(linkId).inputPort);
+			statements.insertFlowTable.setBoolean(8, vtConfig.isFlowMod);
+			statements.insertFlowTable.setInt(9, vtConfig.idleTO);
+			statements.insertFlowTable.setInt(10, vtConfig.hardTO);
 			FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlUpdateFlowDb: insertFlowTable: insert => "
-					+ " sliceId = " + sliceId + " linkId = " + linkId + " nextHop = " + linkSwitchMap.get(linkId) 
+					+ " sliceId = " + sliceId + " linkId = " + linkId + " nextHop = " + Long.toHexString(linkSwitchMap.get(linkId).switchId) 
 					+ " flowMatch = " + flowMatch + " isFlowMod = " + vtConfig.isFlowMod
 					 + " idleTO = " + vtConfig.idleTO + " hardTO = " + vtConfig.hardTO);
 			statements.insertFlowTable.executeUpdate();
 		}
+		
 		conn.commit();	
 	}
 
 	
-	private void insertActiveFlow(String sliceId, String flowMatch, HashMap<Integer,Long> linkSwitchMap, long switchId) 
+	private void insertActiveFlow(String sliceId, String flowMatch, HashMap<Integer,nextHopClass> linkSwitchMap, long switchId) 
 	throws SQLException {		
 		ResultSet rs;
 		int counter = 0;
@@ -1303,7 +1419,7 @@ public class VTSqlDb {
 			statements.selectActiveFlowTableTwo.setString(3, flowMatch);
 			statements.selectActiveFlowTableTwo.setLong(4, switchId);
 			FVLog.log(LogLevel.DEBUG, null, "vtopology: insertActiveFlow: selectActiveFlowTableTwo: variables => "
-					+ " sliceId = " + sliceId + " switchId = " + switchId + " linkId = " + linkId, " flowMatch = "+ flowMatch);
+					+ " sliceId = " + sliceId + " switchId = " + Long.toHexString(switchId) + " linkId = " + linkId, " flowMatch = "+ flowMatch);
 			rs = statements.selectActiveFlowTableTwo.executeQuery();
 			while (rs.next())
 				counter++;
@@ -1317,7 +1433,7 @@ public class VTSqlDb {
 				statements.insertActiveFlowTableOne.executeUpdate();
 					FVLog.log(LogLevel.DEBUG, null, "vtopology: insertActiveFlow: insertActiveFlowTableOne: insert => "
 							+ " sliceId = " + sliceId + " linkId = " + linkId + " flowMatch = " + flowMatch
-							 + " switchId = " + switchId);
+							 + " switchId = " + Long.toHexString(switchId));
 			}
 		}
 		conn.commit();	
@@ -1372,7 +1488,7 @@ public class VTSqlDb {
 
 	
 /**
- * @name sqlRemoveSliceInfo
+ * @name sqlRemoveFlowInfo
  * @authors roberto.doriguzzi matteo.gerola
  * @info This function remove all the information stored in the database regarding a flow, 
  * when a flow_rem arrived to flowvisor
@@ -1384,18 +1500,23 @@ public class VTSqlDb {
  */
 	public boolean sqlRemoveFlowInfo (String sliceId, long switchId, String flowMatch) 
 	throws SQLException {
+		
 		boolean ret = true;
-		statements.deleteFlowTableFour.setString(1, sliceId);
-		statements.deleteFlowTableFour.setString(2, flowMatch);
-		statements.deleteFlowTableFour.execute();
-		FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlRemoveFlowInfo: deleteFlowTableFour: delete => "
-				+ " sliceId = " + sliceId + " flowMatch = " + flowMatch);	
+		int rows = 0;
+		statements.deleteFlowTableFive.setString(1, sliceId);
+		statements.deleteFlowTableFive.setLong(2, switchId);
+		statements.deleteFlowTableFive.setString(3, flowMatch);
+		rows = statements.deleteFlowTableFive.executeUpdate();
+		FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlRemoveFlowInfo: deleteFlowTableFive: delete => "
+				+ " sliceId = " + sliceId + " switchId = " + Long.toHexString(switchId) + " flowMatch = " + flowMatch);	
+		
 		statements.deleteActiveFlowTableTwo.setString(1, sliceId);
-		statements.deleteActiveFlowTableTwo.setString(2, sliceId);
+		statements.deleteActiveFlowTableTwo.setString(2, flowMatch);
 		statements.deleteActiveFlowTableTwo.setLong(3, switchId);
-		statements.deleteActiveFlowTableTwo.execute();
+		rows = statements.deleteActiveFlowTableTwo.executeUpdate();
 		FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlRemoveFlowInfo: deleteActiveFlowTableTwo: delete => "
-				+ " sliceId = " + sliceId + " flowMatch = " + flowMatch + " switchId = " + switchId);	
+				+ " sliceId = " + sliceId + " flowMatch = " + flowMatch + " switchId = " + Long.toHexString(switchId));	
+		
 		conn.commit();		
 		return ret;
 	}
@@ -1437,7 +1558,7 @@ public class VTSqlDb {
 		statements.insertLeaseTable.execute();
 		FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlInsertLeaseInfo: insertLeaseTable: insert => "
 				+ " sliceId = " + sliceId + " linkName = " + linkName + " linkId = " + linkId
-				 + " switchId = " + switchId + " phyPortId = " + phyPortId + "virtPortId = " + virtPortId);
+				 + " switchId = " + Long.toHexString(switchId) + " phyPortId = " + phyPortId + "virtPortId = " + virtPortId);
 		conn.commit();
 		return ret;
 	}
@@ -1469,7 +1590,7 @@ public class VTSqlDb {
 		statements.selectLeaseTableTwo.setLong(3, switchId);
 		statements.selectLeaseTableTwo.setInt(4, phyPortId);
 		FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlGetLeaseInfo: selectLeaseTableTwo: variables => "
-				+ " sliceId = " + sliceId + " linkId = " + linkId + " switchId = " + switchId + " phyPortId = " + phyPortId);
+				+ " sliceId = " + sliceId + " linkId = " + linkId + " switchId = " + Long.toHexString(switchId) + " phyPortId = " + phyPortId);
 		ResultSet rs = statements.selectLeaseTableTwo.executeQuery();
 		while (rs.next()) {
 			virtPortId = rs.getInt("virtPortId");
@@ -1546,23 +1667,36 @@ public class VTSqlDb {
  * @return long nextHop = dpid of the next switch in the link
  * @exception SQLException
  */
-	public long sqlGetNextHop(String sliceId, int linkId, long switchId, int outPortId) 
+	public nextHopClass sqlGetNextHop(String sliceId, int linkId, long switchId, int outPortId) 
 	throws SQLException {
 		long nextHop = 0;
+		nextHopClass nhc = new nextHopClass();
+		
 		statements.selectLinkTableOne.setString(1, sliceId);
 		statements.selectLinkTableOne.setInt(2, linkId);
 		statements.selectLinkTableOne.setLong(3, switchId);
 		statements.selectLinkTableOne.setInt(4, outPortId);
 		FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlGetNextHop: selectLinkTableOne: variables => "
-				+ " sliceId = " + sliceId + " switchId = " + switchId + " linkId = " + linkId + " outPortId = " + outPortId);
+				+ " sliceId = " + sliceId + " switchId = " + Long.toHexString(switchId) + " linkId = " + linkId + " outPortId = " + outPortId);
 		ResultSet rs = statements.selectLinkTableOne.executeQuery();
 		while (rs.next ()) {
-			nextHop = rs.getLong("nextHop");
+			nextHop = nhc.switchId = rs.getLong("nextHop");
 			FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlGetNextHop: selectLinkTableOne: results => "
-					+ " nextHop = " + nextHop);
+					+ " nextHop = " + Long.toHexString(nextHop));
 		}
 		
-		return nextHop;
+		statements.selectLinkTableThree.setString(1, sliceId);
+		statements.selectLinkTableThree.setInt(2, linkId);
+		statements.selectLinkTableThree.setLong(3, nhc.switchId);
+		statements.selectLinkTableThree.setLong(4, switchId);
+		
+		rs = statements.selectLinkTableThree.executeQuery();
+		while (rs.next ()) {
+			
+			nhc.inputPort = rs.getInt("outPortId");
+		}
+		
+		return nhc;
 	}
 	
 	public boolean sqlCheckIfFirstVLink(String sliceId, long switchId, int phyPortId, boolean status) 
@@ -1576,7 +1710,7 @@ public class VTSqlDb {
 		statements.selectSwitchTableThirteen.setLong(2, switchId);
 		statements.selectSwitchTableThirteen.setInt(3, phyPortId);
 		FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlCheckIfFirstVLink: selectSwitchTableThirteen: variables => "
-				+ " sliceId = " + sliceId + " switchId = " + switchId + " phyPortId = " + phyPortId);
+				+ " sliceId = " + sliceId + " switchId = " + Long.toHexString(switchId) + " phyPortId = " + phyPortId);
 		ResultSet rs = statements.selectSwitchTableThirteen.executeQuery();
 		while (rs.next ()) {
 			if (rs.getBoolean("accessPort") == true && rs.getBoolean("status") == true)
@@ -1609,7 +1743,7 @@ public class VTSqlDb {
 				statements.updateSwitchTable.setInt(4,0);
 				statements.updateSwitchTable.setInt(5,phyPortId);
 				FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlCheckIfFirstVLink: updateSwitchTable: update portStatus = "+ false 
-						+" with variables => sliceId = " + sliceId + " switchId = " + switchId + " linkId = " + 0
+						+" with variables => sliceId = " + sliceId + " switchId = " + Long.toHexString(switchId) + " linkId = " + 0
 						+" virtPortId = " + phyPortId);
 				statements.updateSwitchTable.executeUpdate();
 				isChanged = true;
@@ -1621,7 +1755,7 @@ public class VTSqlDb {
 				statements.updateSwitchTable.setInt(4,0);
 				statements.updateSwitchTable.setInt(5,phyPortId);
 				FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlCheckIfFirstVLink: updateSwitchTable: update portStatus = "+ true 
-						+" with variables => sliceId = " + sliceId + " switchId = " + switchId + " linkId = " + 0
+						+" with variables => sliceId = " + sliceId + " switchId = " + Long.toHexString(switchId) + " linkId = " + 0
 						+" virtPortId = " + phyPortId);
 				statements.updateSwitchTable.executeUpdate();
 				isChanged = true;
@@ -1631,4 +1765,66 @@ public class VTSqlDb {
 		return isChanged;
 	}
 	
+	/**
+	 * @param sliceId
+	 * @param switchId
+	 * @param flowMatch
+	 * @param vtConfig 
+	 * @return
+	 * @throws SQLException 
+	 */
+	public boolean sqlManageVLinkLLDP(String sliceId, long switchId, byte[] bs, VTConfigInterface vtConfig) 
+	throws SQLException {
+		int linkId = 0;
+		long nextHop = 0;
+		int outVirtPortId = 0;
+		for (int virtPortId : vtConfig.virtPortList) {
+			statements.selectSwitchTableFourteen.setString(1, sliceId);
+			statements.selectSwitchTableFourteen.setLong(2, switchId);
+			statements.selectSwitchTableFourteen.setInt(3, virtPortId);
+			FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlManageVLinkLLDP: selectSwitchTableFourteen: variables => "
+					+ " sliceId = " + sliceId + " switchId = " + switchId + " virtPortId = " + virtPortId);
+			ResultSet rs = statements.selectSwitchTableFourteen.executeQuery();
+			while (rs.next ()) {
+				linkId = rs.getInt("linkId");
+				FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlManageVLinkLLDP: selectSwitchTableFourteen: results => "
+						+ " linkId = " + linkId);
+			}
+			if (linkId != 0) {
+				statements.selectSwitchTableFifthteen.setString(1, sliceId);
+				statements.selectSwitchTableFifthteen.setInt(2, linkId);
+				statements.selectSwitchTableFifthteen.setLong(3, switchId);
+				FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlManageVLinkLLDP: selectSwitchTableFifthteen: variables => "
+						+ " sliceId = " + sliceId + " linkId = " + linkId + " switchId != " + switchId);
+				rs = statements.selectSwitchTableFifthteen.executeQuery();
+				while (rs.next ()) {
+					nextHop = rs.getLong("switchId");
+					outVirtPortId = rs.getInt("virtPortId");
+					FVLog.log(LogLevel.DEBUG, null, "vtopology: sqlManageVLinkLLDP: selectSwitchTableFifthteen: results => "
+							+ " nextHop = " + nextHop + " virtPortId = " + outVirtPortId);
+					
+					List<FVEventHandler> handlers = VeRTIGO.getInstance().getHandlersCopy();
+					for (FVEventHandler handler : handlers) {
+						if (handler.getName().contains("slicer_") && handler.getName().contains(sliceId) &&
+								handler.getName().contains(FlowSpaceUtil.dpidToString(nextHop))) {
+							if (outVirtPortId != 0 && nextHop != 0) {
+								VTLLDPEvent event = new VTLLDPEvent(null,handler,outVirtPortId,bs);
+								try {
+									handler.handleEvent(event);
+								} catch (UnhandledEvent e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+								}	
+								break;
+							}
+						}
+					}	
+					
+				}
+			}
+		}
+		
+		// TODO Auto-generated method stub
+		return false;
+	}
 }
