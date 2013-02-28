@@ -19,11 +19,9 @@ each OpenFlow message related to this physical port must be modified with
 virtual port numbers consistent with the instantiated virtual links before being
 forwarded to the controller.
 
-This document describes the VeRTIGO's internals and is intended for
-people looking to modify/develop the current code.
-At the bottom there is also a short configuration HOWTO which describes the
-main steps to start using VeRTIGO.
-
+This document gives a short introduction of the VeRTIGO's internals and
+provides a detailed description of the installation and configuration
+procedures.
 
 
 CODE LAYOUT:
@@ -192,8 +190,9 @@ Specification v1.0.0.
 
 vectl getVTPlannerPortStats <switchid> <port> <datetime1> <datetime2>
 
-Retrieves the collected stats of one port collected between and . Value of and
-must be inserted in the format YYYY.MM.DD.hh.mm.ss, for instance:
+Retrieves the collected stats of one port collected between datetime1 and
+datetime2. Value of datetime1 and datetime2 must be inserted in the format
+YYYY.MM.DD.hh.mm.ss, for instance:
 
 vectl getVTPlannerPortStats 02:08:02:08:00:00:00:01 4 2012.10.15.00.00.00
 2012.10.15.23.59.59

@@ -28,6 +28,6 @@ if [ ! -z $FV_DEBUG_PORT ] ; then
     FV_JVM_ARGS="$FV_JVM_ARGS -Xdebug -Xrunjdwp:transport=dt_socket,suspend=n,address=$FV_DEBUG_PORT,server=y"
 fi
 
-echo Starting FlowVisor >&2 
+echo Starting VeRTIGO >&2 
 echo Running with FV_JVM_ARGS=$FV_JVM_ARGS >&2
 exec java $FV_JVM_ARGS $fv_defines $sslopts -cp $classpath org.flowvisor.VeRTIGO "$@" 
