@@ -34,7 +34,7 @@ FlowVisor source code tree. The base package is
 Most of functions of VeRTIGO are invoked from the FVSlicer as Virtual Topology
 configurations differ for each slice. 
 Other classes can be found within package org.flowvisor.events (VTEvent,
-VTLLDPEvent amd VTStoreStatisticsEvent)
+VTLLDPEvent and VTStoreStatisticsEvent)
 
 The code added for VeRTIGO is usually comprised within lines:
 
