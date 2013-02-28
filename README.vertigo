@@ -137,16 +137,51 @@ vectl createSlice charlie tcp:yourhost.com:10001 slice-email@yourhost.com
 
 vectl addFlowSpace any 10 any "Slice:charlie=4"
 
+
+
+VIRTUAL LINKS MANAGEMENT
+
 Virtual links can be instantiated by using the addLink command as follows:
+
+vectl addLink charlie <link_description>
+
+Where charlie is the name of the VT and <link_description> is a sequence of
+pairs 00:00:00:00:00:00:00:0X/Y representing the datapath_id of a switch plus a
+physical port number. For instance: 
 
 vectl addLink charlie 00:00:00:00:00:00:00:01/1-00:00:00:00:00:00:00:02/1,
 00:00:00:00:00:00:00:02/2-00:00:00:00:00:00:00:03/1
 
-Where charlie is the name of the VT and the couple 00:00:…:0X/Y represents the
-datapath_id of a switch plus a physical port number. This command above creates
-a direct connection (Virtual Link) between switches with datapath_id
-00:00:00:00:00:00:00:01 and 00:00:00:00:00:00:00:03 passing through
-00:00:00:00:00:00:00:02.
+The command above creates a direct connection (Virtual Link) between switches
+with datapath_id 00:00:00:00:00:00:00:01 and 00:00:00:00:00:00:00:03 passing
+through 00:00:00:00:00:00:00:02.
+
+
+vectl changeLink charlie <link_id> <link_description>
+
+Similar to addLink, but is used to change the description of a virtual link
+while maintaining the same identifier.
+
+
+vectl getVirtualLinks charlie
+
+Prints all the links instantiated for VT “charlie”. The output is something
+like:
+
+Virtual Link 1: 
+        Hop 1: 00:00:00:00:00:00:00:06/1-00:00:00:00:00:00:00:01/2
+        Hop 2: 00:00:00:00:00:00:00:01/3-00:00:00:00:00:00:00:02/1
+        Hop 3: 00:00:00:00:00:00:00:02/2-00:00:00:00:00:00:00:08/1
+Virtual Link 2: 
+        Hop 1: 00:00:00:00:00:00:00:06/1-00:00:00:00:00:00:00:01/2
+        Hop 2: 00:00:00:00:00:00:00:01/4-00:00:00:00:00:00:00:03/1
+        Hop 3: 00:00:00:00:00:00:00:03/2-00:00:00:00:00:00:00:04/1
+ 
+
+vectl deleteLink charlie <link_id>
+
+Deletes a link with identifier link_id on VT charlie. The identifier can be
+obtained through command getVirtualLinks.
 
 
 
@@ -201,5 +236,7 @@ vectl getVTPlannerPortStats 02:08:02:08:00:00:00:01 4 2012.10.15.00.00.00
 2012.10.15.23.59.59
 
 
+QUESTIONS
+   roberto.doriguzzi@create-net.org
 
 
