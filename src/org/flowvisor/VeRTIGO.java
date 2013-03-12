@@ -3,6 +3,7 @@ package org.flowvisor;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -24,6 +25,7 @@ import org.flowvisor.message.FVMessageFactory;
 import org.flowvisor.ofswitch.OFSwitchAcceptor;
 import org.flowvisor.ofswitch.TopologyController;
 import org.flowvisor.vtopology.topology_configurator.VTConfigInterface;
+import org.flowvisor.vtopology.topology_configurator.VTSqlDb;
 import org.openflow.example.cli.Option;
 import org.openflow.example.cli.Options;
 import org.openflow.example.cli.ParseException;
@@ -35,7 +37,7 @@ public class VeRTIGO {
 
 		// VERSION
 		public final static String FLOWVISOR_VERSION = "flowvisor-0.8.1";
-		public final static String VERTIGO_VERSION = "vertigo-0.2.99";
+		public final static String VERTIGO_VERSION = "vertigo-0.3.0";
 
 		// Max slicename len ; used in LLDP for now; needs to be 1 byte
 		public final static int MAX_SLICENAME_LEN = 255;
@@ -162,12 +164,6 @@ public class VeRTIGO {
 			}
 			if (!flowdb)
 				FVLog.log(LogLevel.INFO, null, "flowdb: Disabled");
-
-			/**
-			 * @authors roberto.doriguzzi matteo.gerola
-			 */
-			VTConfigInterface vt_config = new VTConfigInterface();
-			vt_config.InitDB();
 			
 			// start event processing
 			pollLoop.doEventLoop();

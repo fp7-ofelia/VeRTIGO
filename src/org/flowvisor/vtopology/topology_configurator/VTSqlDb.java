@@ -38,7 +38,15 @@ public class VTSqlDb {
 	private static VTSqlDb instance = null;
 	public static VTSqlDb getInstance() {
 		if (instance == null) {
-			instance = new VTSqlDb();
+			try {
+				instance = new VTSqlDb();
+			} catch (ClassNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		return instance;
  	}
@@ -103,22 +111,17 @@ public class VTSqlDb {
 		PreparedStatement insertLeaseTable;
 	}
 	
-	private VTSqlDb() {
-		statements = new statements();
-		
-	}
-	
 /**
- * @name sqlDbInit()
+ * @name VTSqlDb()
  * @authors roberto.doriguzzi, matteo.gerola
- * @description This function provide basic database functionalities: 
- * connect, check db existence, table creation, user authentication 
+ * @description Class constructor
  * @exception ClassNotFoundException
  * @exception SQLException
  */	
-	public void sqlDbInit() 
+	public VTSqlDb() 
 	throws ClassNotFoundException, SQLException {
 		// Load config informations
+		statements = new statements();
 		VTDBConfig dbConfig = new VTDBConfig();
 		dbConfig.GetDBConfig();
 		
@@ -567,11 +570,15 @@ public class VTSqlDb {
 	
 
 /**
- * @param sliceId
- * @param link
- * @param status
- * @param vtConfigInterface
- * @return
+ * @authors roberto.doriguzzi, matteo.gerola
+ * @name sqlUpdateVirtualLink()
+ * @param String sliceId = name of the slice
+ * @param VTLink currentLink = link description
+ * @param int status = add/delete/modify 
+ * @info Adds/removes/Modifies a virtual link
+ * @exception SQLException
+ * @exception RuntimeException
+ * @exception ConfigError
  */
 	public boolean sqlUpdateVirtualLink(String sliceId, VTLink currentLink, int status, VTConfigInterface vtConfig) 
 	throws SQLException {
@@ -1117,10 +1124,11 @@ public class VTSqlDb {
  * @description This function returns the input/output physical ports of one or all virtual links crossing a middlepoint switch
  * @param String sliceId = name of the slice
  * @param long switchId = dpid of the source switch
+ * @param int linkId = virtual link identifier
  * @return HashMap <Integer,LinkedList<Integer>> = the list of virtual links and related in/out physical ports
  * @exception SQLException
  */
-	public HashMap <Integer,LinkedList<Integer>> sqlGetMiddlePointLinks(String sliceId, long switchId, Integer linkId) 
+	public HashMap <Integer,LinkedList<Integer>> sqlGetMiddlePointLinks(String sliceId, long switchId, int linkId) 
 	throws SQLException {
 		ResultSet rs = null;
 		HashMap <Integer,LinkedList<Integer>> LinkList = new HashMap <Integer,LinkedList<Integer>>();
@@ -1175,11 +1183,11 @@ public class VTSqlDb {
  * @authors roberto.doriguzzi matteo.gerola
  * @info This function returns the list of middlepoints of a given virtual link
  * @param String sliceId = name of the slice
- * @param Integer linkId = the virtual link identifier
+ * @param int linkId = the virtual link identifier
  * @return HashMap <Long,LinkedList<Integer>> = the list of DPIDs and related in/out physical ports
  * @exception SQLException
  */
-	public HashMap <Long,LinkedList<Integer>> sqlGetLinkMiddlePoints(String sliceId, Integer linkId) 
+	public HashMap <Long,LinkedList<Integer>> sqlGetLinkMiddlePoints(String sliceId, int linkId) 
 	throws SQLException {
 		HashMap <Long,LinkedList<Integer>> MiddlePointList = new HashMap <Long,LinkedList<Integer>>();
 		
@@ -1209,11 +1217,11 @@ public class VTSqlDb {
  * @authors roberto.doriguzzi matteo.gerola
  * @info This function returns a list of pairs <switchId,nextHop> linked with the outport of the switch with DPID=switchId
  * @param String sliceId = name of the slice
- * @param Integer linkId = the virtual link identifier
+ * @param int linkId = the virtual link identifier
  * @return HashMap <LinkedList<Long>,Integer> = hashmap <<switchId, nextHop>, switchId_outPort>
  * @exception SQLException
  */
-	public HashMap <LinkedList<Long>,Integer> sqlGetLinkHops(String sliceId, Integer linkId) 
+	public HashMap <LinkedList<Long>,Integer> sqlGetLinkHops(String sliceId, int linkId) 
 	throws SQLException {
 		HashMap <LinkedList<Long>,Integer> HopList = new HashMap <LinkedList<Long>,Integer>();
 		
@@ -1265,11 +1273,11 @@ public class VTSqlDb {
  * @info This function tells you whether a switch is an end-point of a link
  * @param String sliceId = name of the slice
  * @param long switchId = dpid of the source switch
- * @param short linkId = link identifier
+ * @param int linkId = link identifier
  * @return boolean = true if the switch is an end-point for the link
  * @exception SQLException
  */
-	public boolean sqlGetEndPoint(String sliceId, long switchId, short linkId) 
+	public boolean sqlGetEndPoint(String sliceId, long switchId, int linkId) 
 	throws SQLException {
 		boolean ret = false;
 		
@@ -1291,11 +1299,11 @@ public class VTSqlDb {
  * @info This function returns the DPID and outPort info of the remote endpoint of a given virtual link
  * @param String sliceId = name of the slice
  * @param long switchId = dpid of the source switch
- * @param short linkId = link identifier
+ * @param int linkId = link identifier
  * @return List <Object> remoteEndPoint = <remote DPID, linkId, the phyPortId, virtPortId>
  * @exception SQLException
  */
-	public List <Object> sqlGetRemoteEndPoint(String sliceId, long switchId, short linkId) 
+	public List <Object> sqlGetRemoteEndPoint(String sliceId, long switchId, int linkId) 
 	throws SQLException {
 		List <Object> remoteEndPoint = null; 
 		
@@ -1321,11 +1329,11 @@ public class VTSqlDb {
  * @info This function returns the value of the virtual port which "connects" the virtual link to the endpoint switch
  * @param String sliceId = name of the slice
  * @param long switchId = dpid of the source switch
- * @param short linkId = virtual link identifier
+ * @param int linkId = virtual link identifier
  * @return Integer = the virtual port number
  * @exception SQLException
  */
-	public Integer sqlGetPhyToVirtMap(String sliceId, long switchId, short linkId) 
+	public Integer sqlGetPhyToVirtMap(String sliceId, long switchId, int linkId) 
 	throws SQLException {
 		ResultSet rs = null;
 		Integer virtPortId = null;

@@ -44,6 +44,7 @@ import org.flowvisor.log.SendRecvDropStats;
 import org.flowvisor.ofswitch.TopologyController;
 import org.flowvisor.slicer.FVSlicer;
 import org.flowvisor.vtopology.topology_configurator.VTConfigInterface;
+import org.flowvisor.vtopology.topology_configurator.VTHashMap;
 import org.flowvisor.vtopology.topology_configurator.VTHop;
 import org.flowvisor.vtopology.topology_configurator.VTLink;
 import org.flowvisor.vtopology.topology_configurator.VTSlice;
@@ -436,7 +437,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 			/**
 			 * @authors roberto.doriguzzi matteo.gerola
 			 */
-			VTConfigInterface vtConfig = new VTConfigInterface();
+			VTConfigInterface vtConfig = new VTConfigInterface(sliceName);
 			vtConfig.RemoveSliceInfo(sliceName);
 		}
 		return true;
@@ -1120,7 +1121,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 
 			// Find new linkId
 
-			VTConfigInterface vtConfig = new VTConfigInterface();
+			VTConfigInterface vtConfig = new VTConfigInterface(sliceName);
 			short linkId = vtConfig.GetNewLinkId(sliceName, linkString);
 			if (linkId == 0) return false;
 			
@@ -1200,7 +1201,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 					+ ") by: " + APIUserCred.getUserName());
 			
 			//Update vtopology database
-			VTConfigInterface vtConfig = new VTConfigInterface();
+			VTConfigInterface vtConfig = new VTConfigInterface(sliceName);
 			vtConfig.UpdateVirtualLink(sliceName, vtLink, 2);
 			
 			VeRTIGO.getInstance().checkPointConfig();
@@ -1245,8 +1246,8 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 					+ ") by: " + APIUserCred.getUserName());
 			
 			//Update vtopology database
-			VTConfigInterface vtConfig = new VTConfigInterface();
-			vtConfig.UpdateVirtualLink(sliceName, vtLink, 1);
+			VTConfigInterface vt_config = new VTConfigInterface(sliceName);
+			vt_config.UpdateVirtualLink(sliceName, vtLink, 1);
 			
 			VeRTIGO.getInstance().checkPointConfig();
 		}

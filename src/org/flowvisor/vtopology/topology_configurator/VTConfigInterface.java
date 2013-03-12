@@ -27,67 +27,23 @@ import org.openflow.protocol.OFType;
  * 				Virtual Topologies 
  */
 public class VTConfigInterface {
-	public boolean isEndPoint; 	// property of a switch: end point of a virtual link
-	public short phyPortId;
-	public short virtPortId;
 	public HashMap<Integer,List<Integer>> bufferIdMap;
-	public HashMap<Integer,Integer> controlChannelMap; 
-	public HashMap<Integer, LinkedList<Integer>> linkMap;  //list of links for connected to each physical port
-	public boolean isFlowMod;
-	public int idleTO;
-	public int hardTO;
+	public HashMap<Integer, Integer> statsMap;  //map that keeps track of the virtual port in the stats requests
 	private VTSqlDb dbQuery;
 	public VTHashMap vt_hashmap;
-
+	private String sliceName;
 	
 /**
  * @name Constructor
  * @info This function initializes the interface variables and the database
  * @authors roberto.doriguzzi matteo.gerola
  */
-	public VTConfigInterface(){
-		isEndPoint = false;
-		phyPortId = 0;
-		virtPortId = 0;
+	public VTConfigInterface(String sliceName){
+		this.sliceName = sliceName;
 		bufferIdMap = new HashMap<Integer,List<Integer>>();
-		controlChannelMap = new HashMap<Integer,Integer>();
-		linkMap = new HashMap<Integer, LinkedList<Integer>>();
+		statsMap = new HashMap<Integer,Integer>();
 		dbQuery = VTSqlDb.getInstance();
-	}
-
-	
-/**
- * @name clear
- * @info This function clears all the variables
- * @authors roberto.doriguzzi matteo.gerola
- */
-	public void Clear(){
-		isEndPoint=false;
-		phyPortId = 0;
-		virtPortId = 0;
-		controlChannelMap.clear();
-		linkMap.clear();
-		isFlowMod = false;
-		idleTO = 0;
-		hardTO = 0;
-	}
-	
-	
-/**
- * @name InitDB
- * @authors roberto.doriguzzi matteo.gerola
- * @info This function provide basic database functionalities: connect, check db existence, table creation, user authentication
- */
-	public void InitDB()  {
-		try {
-			dbQuery.sqlDbInit();
-		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}		
+		vt_hashmap = VTHashMap.getInstance(sliceName);
 	}
 	
 	
@@ -143,9 +99,10 @@ public class VTConfigInterface {
  * @info This function tells you whether a switch is an end-point of a link
  * @param String sliceId = name of the slice
  * @param long switchId = dpid of the switch
+ * @param int linkId = virtual link identifier
  * @return isEndPoint = TRUE if the switch is an end point, FALSE otherwise
  */
-	public boolean GetEndPoint(String sliceName,long switchId, short linkId) {
+	public boolean GetEndPoint(String sliceName,long switchId, int linkId) {
 		boolean ret=false;
 		try {
 			ret = dbQuery.sqlGetEndPoint(sliceName,switchId,linkId);
@@ -163,10 +120,10 @@ public class VTConfigInterface {
  * @info This function returns the virtual port which connects the Virtual Link "linkId" with to the switch "switchId" 
  * @param String sliceId = name of the slice
  * @param long switchId = dpid of the switch
- * @param short linkId = link identifier
+ * @param int linkId = link identifier
  * @return Integer = the virtual port number
  */
-	public Integer GetPhyToVirtMap(String sliceName,long switchId, short linkId) {
+	public Integer GetPhyToVirtMap(String sliceName,long switchId, int linkId) {
 		Integer virtPortId = null;
 		try {
 			virtPortId = dbQuery.sqlGetPhyToVirtMap(sliceName, switchId, linkId); 
@@ -265,6 +222,11 @@ public class VTConfigInterface {
 	public boolean UpdateVirtualLink (String sliceId, VTLink link, int status) {
 		boolean ret = true;
 		try {
+			
+			// when a link is deleted, we also need to remove static entries
+			if(status == 1) {
+				RemoveStaticMiddlePointEntries(sliceId, link.linkId);
+			}
 			ret = dbQuery.sqlUpdateVirtualLink (sliceId, link, status, this);
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -297,17 +259,17 @@ public class VTConfigInterface {
 	}
 	
 /**
- * @name InstallMiddlePointEntries
+ * @name InstallStaticMiddlePointEntries
  * @authors roberto.doriguzzi matteo.gerola
  * @info This function installs static flow entries on middlepoint switches of virtual links 
  * @param FVSlicer slicer = pointer to the slicer
  * @param FVClassifier fromSwitch = classifier  
  * @param short inPort = the input port
  * @param int buffer_id = the buffer id for the flow_mod message
- * @param Integer linkId = the virtual link identifier. linkId==0 means all virtual links crossing the middlepoint
+ * @param int linkId = the virtual link identifier. linkId==0 means all virtual links crossing the middlepoint
  * @return ret = boolean return code (TRUE: ok, FALSE: error in the function)  
  */
-	public boolean InstallStaticMiddlePointEntries(FVSlicer slicer, FVClassifier fromSwitch, Integer linkId, short inPort, int buffer_id, String sliceId) {
+	public boolean InstallStaticMiddlePointEntries(String sliceId, FVSlicer slicer, FVClassifier fromSwitch, int linkId, short inPort, int buffer_id) {
 		boolean ret = true;
 		HashMap <Integer,LinkedList<Integer>> LinkList;
 		
@@ -327,14 +289,41 @@ public class VTConfigInterface {
 	}	
 	
 /**
+ * @name RemoveStaticMiddlePointEntries
+ * @authors roberto.doriguzzi matteo.gerola
+ * @info This function removes static flow entries from middlepoint switches of virtual links 
+ * @param String sliceId = slice name
+ * @param int linkId = the virtual link identifier. linkId==0 is not permitted
+ * @return ret = boolean return code (TRUE: ok, FALSE: error in the function)  
+ */
+	public boolean RemoveStaticMiddlePointEntries(String sliceId, int linkId) {
+		if(linkId <= 0) return false;
+		HashMap <Long,LinkedList<Integer>> LinkList = null;
+		
+		try {
+			LinkList = dbQuery.sqlGetLinkMiddlePoints(sliceId, linkId); 
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return false;
+		}
+
+		if(LinkList.size() > 0)
+			vt_hashmap.RemoveStaticMiddlePointEntries(linkId, LinkList); 
+		
+		return true;
+	}	
+	
+/**
  * @name InstallMiddlePointEntries
  * @authors roberto.doriguzzi matteo.gerola
  * @info This function installs/removes flow entries on middlepoint switches of virtual links as a consequence of flow_mods arrived to endpoints from the controller
- * @param OFMAtch match, Integer linkId, String sliceId
+ * @param String sliceId, Long switchId, FVFlowMod flowMod, int linkId
  * 
  * @return ret = boolean return code (TRUE: ok, FALSE: error in the function)  
  */
-	public boolean ManageMiddlePointEntries(String sliceId, Long switchId, FVFlowMod flowMod, Integer linkId) {
+	public boolean ManageMiddlePointEntries(String sliceId, Long switchId, FVFlowMod flowMod, int linkId) {
 		boolean ret = true;
 		HashMap <Long,LinkedList<Integer>> MiddlePointList;
 		HashMap <LinkedList<Long>,Integer> HopList;
@@ -404,12 +393,11 @@ public class VTConfigInterface {
  * @name saveFlowMatch
  * @authors roberto.doriguzzi matteo.gerola
  * @info When a flow enters a virtual link, we save its match, the linkID, the DPID of the other endpoint of the link plus the output port
- * @param String sliceId, long switchId, OFMatch match, short linkId
+ * @param String sliceId, long switchId, OFMatch match, int linkId
  * @return boolean = TRUE if we find the remote endpoint, FALSE otherwise 
  */
-	public boolean saveFlowMatch(String sliceId, long switchId, OFMatch match, short linkId) {
+	public boolean saveFlowMatch(String sliceId, long switchId, OFMatch match, int linkId) {
 		List <Object> ret = null;
-		
 		try {
 			ret = dbQuery.sqlGetRemoteEndPoint(sliceId,switchId,linkId);
 		} catch (SQLException e) {
@@ -428,10 +416,10 @@ public class VTConfigInterface {
  * @name cleanFlowMatchTable
  * @authors roberto.doriguzzi matteo.gerola
  * @info Removes the match entries from all middlepoints of virtual link "linkId"
- * @param String sliceId, long switchId, OFMatch match, short linkId
+ * @param String sliceId, long switchId, OFMatch match, int linkId
  * @return void
  */
-	public void cleanFlowMatchTable(String sliceId, long switchId, OFMatch match, short linkId) {
+	public void cleanFlowMatchTable(String sliceId, long switchId, OFMatch match, int linkId) {
 		 
 		 // deleting the entries for the switch which sent the flow removed message
 		 List<Object> info = new LinkedList<Object>();

@@ -95,19 +95,18 @@ public class VTPortMapper {
 		this.msg = m;
 		end_point = true;
 		vt_config = config;
-		vt_config.Clear();
 		portnames = new LinkedList<String>();
 		portnames.add("eth");
 		portnames.add("wlan");
 	}
 	
-	/**
-	 * @name ChangePortDescription
-	 * @authors roberto.doriguzzi matteo.gerola
-	 * @param OFPhysicalPort inPort, Integer portNumber         
-	 * @return void
-	 * @description changes the OFPhysicalPort fields containing the port number
-	 */
+/**
+ * @name ChangePortDescription
+ * @authors roberto.doriguzzi matteo.gerola
+ * @param OFPhysicalPort inPort, Integer portNumber         
+ * @return void
+ * @description changes the OFPhysicalPort fields containing the port number
+ */
 	private void ChangePortDescription(OFPhysicalPort inPort, Integer portNumber) {
 		String portName = inPort.getName();
 		int index = -1;
@@ -146,14 +145,14 @@ public class VTPortMapper {
 		return packetDataOut;	
 	}
 	
-	/**
-	 * @name UpLinkMapping
-	 * @authors roberto.doriguzzi matteo.gerola
-	 * @param FVSlicer slicer, String sliceName, long switchId, FVSendMsg from         
-	 * @return true in case of end point, false otherwise
-	 * @description This function checks whether the switch is an end point of the virtual link. If true, physical ports 
-	 * 				are remapped into virtual ports
-	 */
+/**
+ * @name UpLinkMapping
+ * @authors roberto.doriguzzi matteo.gerola
+ * @param FVSlicer slicer, String sliceName, long switchId, FVSendMsg from         
+ * @return true in case of end point, false otherwise
+ * @description This function checks whether the switch is an end point of the virtual link. If true, physical ports 
+ * 				are remapped into virtual ports
+ */
 	public Integer UpLinkMapping(FVSlicer slicer, String sliceName, FVClassifier switchInfo) {
 		Integer ret = 1;
 		long switchId = switchInfo.getDPID();
@@ -167,7 +166,7 @@ public class VTPortMapper {
 			
 			// DB initialization 
 			vt_config.InitSwitchInfo(sliceName,switchId,inPortList); 
-			vt_config.InstallStaticMiddlePointEntries(slicer, switchInfo, 0, OFPort.OFPP_ALL.getValue(), -1, sliceName);
+			vt_config.InstallStaticMiddlePointEntries(sliceName, slicer, switchInfo, 0, OFPort.OFPP_ALL.getValue(), -1);
 			HashMap<Integer,LinkedList<Integer>> phyToVirtPortMap = vt_config.GetPhyToVirtMap(sliceName,switchId);
 			
 			if(phyToVirtPortMap != null) {
@@ -204,12 +203,12 @@ public class VTPortMapper {
 			OFMatch match = new OFMatch();
 			match.loadFromPacket(packetIn.getPacketData(), packetIn.getInPort());
 //			System.out.println("PACKET_IN IN switchId: "  + Long.toHexString(switchId) + " match: " + match.toString());
-			short linkId = vt_config.vt_hashmap.getLinkId(switchId, match, packetIn.getInPort());
+			int linkId = vt_config.vt_hashmap.getLinkId(switchId, match, packetIn.getInPort());
 			this.end_point = vt_config.GetEndPoint(sliceName,switchId,linkId);
 //			System.out.println("PACKET_IN IN linkId: " + linkId);
 			
 			if(!this.end_point) {// middlepoint switch: installing permanent entries for this specific virtual link
-				vt_config.InstallStaticMiddlePointEntries(slicer, switchInfo, Integer.valueOf(linkId), packetIn.getInPort(), packetIn.getBufferId(), sliceName);				
+				vt_config.InstallStaticMiddlePointEntries(sliceName, slicer, switchInfo, Integer.valueOf(linkId), packetIn.getInPort(), packetIn.getBufferId());				
 				ret = 0;
 			} else { //end point switch: remapping and forwarding
 				Integer buffer_id = vt_config.vt_hashmap.updateFlowInfo(0,match.getDataLayerSource(), match.getDataLayerDestination(),linkId,VTHashMap.FLOWINFO_ACTION.PACKETIN.ordinal());
@@ -245,7 +244,7 @@ public class VTPortMapper {
 //			System.out.println("FLOW_REMOVED IN switchId: "  + Long.toHexString(switchId) + " flowRem: " + flowRem);
 //			System.out.println("FLOW_REMOVED IN coockie: "  + flowRem.getCookie());
 			// checking endpoint
-	        short linkId = vt_config.vt_hashmap.getLinkId(switchId, match, match.getInputPort());
+	        int linkId = vt_config.vt_hashmap.getLinkId(switchId, match, match.getInputPort());
 	        this.end_point = vt_config.GetEndPoint(sliceName,switchId,linkId);
 //	        System.out.println("FLOW_REMOVED linkId: " + linkId);
 	        if(linkId > 0) vt_config.cleanFlowMatchTable(sliceName, switchId, match, linkId);
@@ -277,8 +276,6 @@ public class VTPortMapper {
 			if (statsType == OFStatisticsType.FLOW.getTypeValue()) { //match field contains the in_port
 				List<OFStatistics> inStatsList = statsRep.getStatistics();
 				
-				FVLog.log(LogLevel.DEBUG, slicer, "STATS REPLY: " + statsRep.getStatisticType().toString());
-				
 				for (OFStatistics ofStats : inStatsList) {
 					FVFlowStatisticsReply flowStats = (FVFlowStatisticsReply) ofStats;
 					OFMatch match = flowStats.getMatch();
@@ -290,15 +287,19 @@ public class VTPortMapper {
 				List<OFStatistics> inStatsList = statsRep.getStatistics();
 				List<OFStatistics> outStatsList = new LinkedList<OFStatistics>();
 				
-				FVLog.log(LogLevel.DEBUG, slicer, "STATS REPLY: " + statsRep.getStatisticType().toString());
-				
 				for (OFStatistics ofStats : inStatsList){
-					Integer inPort_nr = Integer.valueOf((int)((FVPortStatisticsReply) ofStats).getPortNumber());
-					if(phyToVirtPortMap.containsKey(inPort_nr)){
-						for (Integer virtPortNumber: phyToVirtPortMap.get(inPort_nr))
+					Integer phyPort = Integer.valueOf((int)((FVPortStatisticsReply) ofStats).getPortNumber());
+					if(phyToVirtPortMap.containsKey(phyPort)){
+						for (Integer virtPortNumber: phyToVirtPortMap.get(phyPort))
 						{
 							if(virtPortNumber.shortValue() != 0)
 							{
+								// if the controller requested stats of a single port we have to replace the physical port number with
+								// the correct virtual number stored in the statsMap during the request
+								if(vt_config.statsMap.containsKey(msg.getXid())) 
+									if(virtPortNumber != vt_config.statsMap.get(msg.getXid()))
+										continue;
+								
 								FVPortStatisticsReply portStats = VTCloneStatsMsg.ClonePortStats((FVPortStatisticsReply)ofStats);
 								portStats.setPortNumber(virtPortNumber.shortValue());
 								outStatsList.add((OFStatistics)portStats); 
@@ -306,6 +307,10 @@ public class VTPortMapper {
 							}
 						}
 					}
+				}
+				
+				for (OFStatistics ofStats : outStatsList){
+					FVPortStatisticsReply portStats = (FVPortStatisticsReply) ofStats;
 				}
 				//replacing the statistic list with the new one containing virtual port numbers
 				statsRep.setStatistics(outStatsList);
@@ -315,15 +320,19 @@ public class VTPortMapper {
 				List<OFStatistics> inStatsList = statsRep.getStatistics();
 				List<OFStatistics> outStatsList = new LinkedList<OFStatistics>();
 				
-				FVLog.log(LogLevel.DEBUG, slicer, "STATS REPLY: " + statsRep.getStatisticType().toString());
-				
 				for (OFStatistics ofStats : inStatsList){
-					Integer inPort_nr = Integer.valueOf((int)((FVQueueStatisticsReply) ofStats).getPortNumber());
-					if(phyToVirtPortMap.containsKey(inPort_nr)){
-						for (Integer virtPortNumber: phyToVirtPortMap.get(inPort_nr))
+					Integer phyPort = Integer.valueOf((int)((FVQueueStatisticsReply) ofStats).getPortNumber());
+					if(phyToVirtPortMap.containsKey(phyPort)){
+						for (Integer virtPortNumber: phyToVirtPortMap.get(phyPort))
 						{
 							if(virtPortNumber.shortValue() != 0)
 							{
+								// if the controller requested stats of a single port we have to replace the physical port number with
+								// the correct virtual number stored in the statsMap during the request
+								if(vt_config.statsMap.containsKey(msg.getXid())) 
+									if(virtPortNumber != vt_config.statsMap.get(msg.getXid()))
+										continue;
+								
 								FVQueueStatisticsReply queueStats = VTCloneStatsMsg.CloneQueueStats((FVQueueStatisticsReply)ofStats);
 								queueStats.setPortNumber(virtPortNumber.shortValue());
 								outStatsList.add((OFStatistics)queueStats); 
@@ -332,17 +341,49 @@ public class VTPortMapper {
 						}
 					}
 				}
+				
+				for (OFStatistics ofStats : outStatsList){
+					FVQueueStatisticsReply queueStats = (FVQueueStatisticsReply) ofStats;
+				}
+				
+				
 				//replacing the statistic list with the new one containing virtual port numbers
 				statsRep.setStatistics(outStatsList);
 				statsRep.setLengthU(OFStatisticsReply.MINIMUM_LENGTH + statsLen);
+			} else if (statsType == OFStatisticsType.FLOW.getTypeValue()) {
+				List<OFStatistics> inStatsList = statsRep.getStatistics();
+				
+				for (OFStatistics ofStats : inStatsList){
+					FVFlowStatisticsReply flowStats = (FVFlowStatisticsReply) ofStats;
+					OFMatch match = flowStats.getMatch();
+					Integer phyPort = Integer.valueOf(match.getInputPort());
+					if(phyToVirtPortMap.containsKey(phyPort)){
+						for (Integer virtPortNumber: phyToVirtPortMap.get(phyPort))
+						{
+							if(virtPortNumber.shortValue() != 0)
+							{
+								// we have to replace the physical input port number of the match with
+								// the correct virtual number stored in the statsMap during the request
+								if(vt_config.statsMap.containsKey(msg.getXid())) 
+									if(virtPortNumber != vt_config.statsMap.get(msg.getXid()))
+										continue;
+								
+								match.setInputPort(virtPortNumber.shortValue());
+							}
+						}
+					}
+				}
+				
 			} else if (statsType == OFStatisticsType.AGGREGATE.getTypeValue()) {
 				
-				FVLog.log(LogLevel.DEBUG, slicer, "STATS REPLY: " + statsRep.getStatisticType().toString());
-				if(statsRep.getLengthU() < 24) statsRep.setLengthU(24); //dirty patch for some NEC switches
-				
+				if(statsRep.getLengthU() < 24) statsRep.setLengthU(24); //dirty patch for some NEC switches			
 			}
+			// cleaning the statsMap
+			vt_config.statsMap.remove(msg.getXid());
 		}
 		else if (this.msg.getType() == OFType.PORT_STATUS) {
+			// this part is slightly complicated because if a port included in a virtual link goes up or down, we have to intercept
+			// the message and send two PORT_STATUS messages for the two endpoints ports of the virtual link
 			FVPortStatus portStatus = (FVPortStatus) this.msg;
 			OFPhysicalPort inPort = portStatus.getDesc();
 			ArrayList <FVEventHandler> fvHandlersList = VeRTIGO.getInstance().getHandlersCopy();
@@ -423,12 +464,12 @@ public class VTPortMapper {
 	}
 	
 	
-	/**
-	 * @name DownLinkMapping
-	 * @authors roberto.doriguzzi matteo.gerola
-	 * @param String sliceName, long switchId         
-	 * @return true in case of successful port mapping
-	 */
+/**
+ * @name DownLinkMapping
+ * @authors roberto.doriguzzi matteo.gerola
+ * @param String sliceName, long switchId         
+ * @return true in case of successful port mapping
+ */
 	public boolean DownLinkMapping(FVSlicer slicer, String sliceName, long switchId) {
 		
 
@@ -563,6 +604,7 @@ public class VTPortMapper {
 //			System.out.println("--------------------------------------------");
 //			System.out.println("FLOW_MOD IN switchId1: " + Long.toHexString(switchId) + " " + flowMod.toString());
 //			System.out.println("FLOW_MOD IN inPort wildcard: " + ((match.getWildcards() & OFMatch.OFPFW_IN_PORT)));
+//			System.out.println("FLOW_MOD IN flags: " + flowMod.getFlags());
 			
 			if(vt_config.bufferIdMap.get(flowMod.getBufferId()) != null) {
 				// if the flow left a virtual link with tagged MACs, we need to restore the original MAC addresses
@@ -647,10 +689,10 @@ public class VTPortMapper {
 									Integer linkId = OutPortMap.get(1);
 									if(linkId > 0) { // we save only flows entering vlinks
 										if(flowMod.getCommand() == FVFlowMod.OFPFC_ADD){
-											vt_config.saveFlowMatch(sliceName, switchId, match, linkId.shortValue());	
+											vt_config.saveFlowMatch(sliceName, switchId, match, linkId);
 										}
 										else if(flowMod.getCommand() == FVFlowMod.OFPFC_DELETE || flowMod.getCommand() == FVFlowMod.OFPFC_DELETE_STRICT){
-											vt_config.cleanFlowMatchTable(sliceName, switchId, match, linkId.shortValue());
+											vt_config.cleanFlowMatchTable(sliceName, switchId, match, linkId);
 										}
 										vt_config.ManageMiddlePointEntries(sliceName, switchId, flowMod, linkId);
 									
@@ -681,6 +723,9 @@ public class VTPortMapper {
 				}
 		        flowMod.setActions(outActions);
 		        flowMod.setLengthU(flowMod_size);
+		        
+		        // we always need the FLOW_REMOVED messages from switches
+		        if(flowMod.getCommand() == FVFlowMod.OFPFC_ADD) flowMod.setFlags((short)(flowMod.getFlags() | ((short) (1 << 0))));
 		          
 		        //sometimes a tagged flow (i.e. a flow exiting a virtual link that was controller through PACKET_OUTS) is 
 		        //controlled through FLOW_MODS. Here we remove the tagged MACS.
@@ -692,100 +737,141 @@ public class VTPortMapper {
 			        }
 			        vt_config.bufferIdMap.remove(flowMod.getBufferId());
 		        }
+//		        System.out.println("FLOW_MOD OUT flags: " + flowMod.getFlags());
 //		        System.out.println("FLOW_MOD OUT switchId: " + Long.toHexString(switchId) + " " + flowMod.toString());
 			} else return false;
 		}
 		else if (this.msg.getType() == OFType.PORT_MOD) {
-//			FVPortMod portMod = (FVPortMod) this.msg;
-//			FVLog.log(LogLevel.INFO, slicer, "PORT_MOD");
-//			
-//			Integer port_nr = Integer.valueOf(portMod.getPortNumber());
-//			// loading virtual values into vt_config structure
-//			vt_config.virtPortList.add((int)OFPort.OFPP_ALL.getValue());
-//			vt_config.GetVirttoPhyPortMap(msg, slicer.getSliceName(), switchId, "",0);
-//			if(U16.f(port_nr.shortValue()) < U16.f(OFPort.OFPP_MAX.getValue())){
-//				if(vt_config.virtToPhyPortMap.get(port_nr) != null)
-//					portMod.setPortNumber(vt_config.virtToPhyPortMap.get(port_nr).shortValue());
-//				else return false;
-//			}
-//			else return false;
+			FVPortMod portMod = (FVPortMod) this.msg;
+			FVLog.log(LogLevel.INFO, slicer, "PORT_MOD");
+			
+			Integer virtPort = Integer.valueOf(portMod.getPortNumber());
+			if(U16.f(virtPort.shortValue()) < U16.f(OFPort.OFPP_MAX.getValue())){
+				// retrieve the mapping between virtual ports and (physical ports, virtual links)
+				HashMap<Integer,LinkedList<Integer>> VirtPortsMappings = vt_config.GetVirtPortsMappings(slicer.getSliceName(), switchId);
+				if(VirtPortsMappings.get(virtPort) != null) {
+					LinkedList<Integer> InPortMap = VirtPortsMappings.get(virtPort);
+		        	if(InPortMap != null )
+		        		portMod.setPortNumber(InPortMap.get(0).shortValue());
+		        	else return false;
+				}
+				else return false;
+			}
+			else return false;
 		}
 		else if (this.msg.getType() == OFType.STATS_REQUEST) {
-//			FVStatisticsRequest statsReq = (FVStatisticsRequest) this.msg;			
-//			FVLog.log(LogLevel.DEBUG, slicer, "STATS REQUEST: " + statsReq.getStatisticType().toString());
-//			
-//			// loading virtual values into vt_config structure
-//			vt_config.virtPortList.add((int)OFPort.OFPP_ALL.getValue());
-//			vt_config.GetVirttoPhyPortMap(msg, slicer.getSliceName(), switchId, "",0);
-//			
-//			if(statsReq.getStatisticType() == OFStatisticsType.PORT){
-//				List<OFStatistics> inStatsList = statsReq.getStatistics();
-//				
-//				for (OFStatistics ofStats : inStatsList){
-//					FVPortStatisticsRequest portStats = (FVPortStatisticsRequest) ofStats;
-//					Integer inPort_nr = Integer.valueOf((int)(portStats.getPortNumber()));	
-//					if(U16.f(inPort_nr.shortValue()) < U16.f(OFPort.OFPP_MAX.getValue())){
-//						if(vt_config.virtToPhyPortMap.get(inPort_nr) != null)
-//							portStats.setPortNumber(vt_config.virtToPhyPortMap.get(inPort_nr).shortValue());
-//						else portStats.setPortNumber(OFPort.OFPP_NONE.getValue());
-//					}
-//				}
-//			}
-//			else if(statsReq.getStatisticType() == OFStatisticsType.QUEUE){
-//				List<OFStatistics> inStatsList = statsReq.getStatistics();
-//				
-//				for (OFStatistics ofStats : inStatsList){
-//					FVQueueStatisticsRequest queueStats = (FVQueueStatisticsRequest) ofStats;
-//					Integer inPort_nr = Integer.valueOf((int)(queueStats.getPortNumber()));			
-//					if(U16.f(inPort_nr.shortValue()) < U16.f(OFPort.OFPP_MAX.getValue())){
-//						if(vt_config.virtToPhyPortMap.get(inPort_nr) != null)
-//							queueStats.setPortNumber(vt_config.virtToPhyPortMap.get(inPort_nr).shortValue());
-//						else return false;
-//					}
-//					else return false; // not a valid port number
-//				}
-//	
-//			}
-//			else if(statsReq.getStatisticType() == OFStatisticsType.FLOW){
-//				List<OFStatistics> inStatsList = statsReq.getStatistics();
-//				
-//				for (OFStatistics ofStats : inStatsList){
-//					FVFlowStatisticsRequest flowStats = (FVFlowStatisticsRequest) ofStats;
-//					Integer outPort_nr = Integer.valueOf((int)(flowStats.getOutPort()));			
-//					if(U16.f(outPort_nr.shortValue()) < U16.f(OFPort.OFPP_MAX.getValue())){
-//						if(vt_config.virtToPhyPortMap.get(outPort_nr) != null)
-//							flowStats.setOutPort(vt_config.virtToPhyPortMap.get(outPort_nr).shortValue());
-//						else flowStats.setOutPort(OFPort.OFPP_NONE.getValue());
-//					}
-//					OFMatch match = flowStats.getMatch();
-//					if(vt_config.virtToPhyPortMap.get(match.getInputPort()) != null)
-//						match.setInputPort(vt_config.virtToPhyPortMap.get(match.getInputPort()).shortValue());
-//				}
-//				
-//				
-//			}
-//			else if(statsReq.getStatisticType() == OFStatisticsType.AGGREGATE){
-//				List<OFStatistics> inStatsList = statsReq.getStatistics();
-//				
-//				for (OFStatistics ofStats : inStatsList){
-//					FVAggregateStatisticsRequest aggregateStats = (FVAggregateStatisticsRequest) ofStats;
-//					Integer outPort_nr = Integer.valueOf((int)(aggregateStats.getOutPort()));			
-//					if(U16.f(outPort_nr.shortValue()) < U16.f(OFPort.OFPP_MAX.getValue())){
-//						if(vt_config.virtToPhyPortMap.get(outPort_nr) != null)
-//							aggregateStats.setOutPort(vt_config.virtToPhyPortMap.get(outPort_nr).shortValue());
-//						else aggregateStats.setOutPort(OFPort.OFPP_NONE.getValue());
-//					}
-//					
-//					OFMatch match = aggregateStats.getMatch();
-//					if(vt_config.virtToPhyPortMap.get(match.getInputPort()) != null)
-//						match.setInputPort(vt_config.virtToPhyPortMap.get(match.getInputPort()).shortValue());
-//				}
-//				
-//				
-//			}
-//			else if(statsReq.getStatisticType() == OFStatisticsType.TABLE){
-//				//nothing to remap, just a reminder...
-//			}
+			FVStatisticsRequest statsReq = (FVStatisticsRequest) this.msg;					
+			HashMap<Integer,LinkedList<Integer>> VirtPortsMappings = vt_config.GetVirtPortsMappings(slicer.getSliceName(), switchId);
+			
+//			System.out.println("------------------------------------------------");
+//			System.out.println("STATS_REQUEST TYPE: " + statsReq.getStatisticType());
+			
+			if(statsReq.getStatisticType() == OFStatisticsType.PORT){
+				List<OFStatistics> inStatsList = statsReq.getStatistics();
+				
+				for (OFStatistics ofStats : inStatsList){
+					FVPortStatisticsRequest portStats = (FVPortStatisticsRequest) ofStats;
+					Integer virtPort = Integer.valueOf((int)(portStats.getPortNumber()));	
+					if(U16.f(virtPort.shortValue()) < U16.f(OFPort.OFPP_MAX.getValue())){
+						if(VirtPortsMappings.get(virtPort) != null) {
+							LinkedList<Integer> InPortMap = VirtPortsMappings.get(virtPort);
+				        	if(InPortMap != null ) {
+				        		portStats.setPortNumber(InPortMap.get(0).shortValue());
+				        		//in case of port != OFPP_NONE we must save the virtual port number. This number is used 
+				        		//when we get the reply from the switch
+				        		vt_config.statsMap.put(msg.getXid(), virtPort);
+				        	}
+				        	else return false;
+						}
+						else return false;
+					}
+				}
+			}
+			else if(statsReq.getStatisticType() == OFStatisticsType.QUEUE){
+				List<OFStatistics> inStatsList = statsReq.getStatistics();
+				
+				for (OFStatistics ofStats : inStatsList){
+					FVQueueStatisticsRequest queueStats = (FVQueueStatisticsRequest) ofStats;
+					Integer virtPort = Integer.valueOf((int)(queueStats.getPortNumber()));	
+					if(U16.f(virtPort.shortValue()) < U16.f(OFPort.OFPP_MAX.getValue())){
+						if(VirtPortsMappings.get(virtPort) != null) {
+							LinkedList<Integer> InPortMap = VirtPortsMappings.get(virtPort);
+				        	if(InPortMap != null ) {
+				        		queueStats.setPortNumber(InPortMap.get(0).shortValue());
+				        		//in case of port != OFPP_NONE we must save the virtual port number. This number is used 
+				        		//when we get the reply from the switch
+				        		vt_config.statsMap.put(msg.getXid(), virtPort);
+				        	}
+				        	else return false;
+						}
+						else return false;
+					}
+				}
+			}
+			else if(statsReq.getStatisticType() == OFStatisticsType.FLOW){
+				List<OFStatistics> inStatsList = statsReq.getStatistics();
+				
+				for (OFStatistics ofStats : inStatsList){
+					FVFlowStatisticsRequest flowStats = (FVFlowStatisticsRequest) ofStats;
+					Integer outVirtPort = Integer.valueOf((int)(flowStats.getOutPort()));	
+					if(U16.f(outVirtPort.shortValue()) < U16.f(OFPort.OFPP_MAX.getValue())){
+						if(VirtPortsMappings.get(outVirtPort) != null) {
+							LinkedList<Integer> InPortMap = VirtPortsMappings.get(outVirtPort);
+				        	if(InPortMap != null ) {
+				        		flowStats.setOutPort(InPortMap.get(0).shortValue());
+				        	}
+				        	else return false;
+						}
+						else return false;
+					}
+					
+					OFMatch match = flowStats.getMatch();
+					Integer virtPort = Integer.valueOf(match.getInputPort());	
+					if(VirtPortsMappings.get(virtPort) != null) {
+						LinkedList<Integer> InPortMap = VirtPortsMappings.get(virtPort);
+			        	if(InPortMap != null ) {
+			        		match.setInputPort(InPortMap.get(0).shortValue());
+			        		//Here we save the virtual in_port number. This number is used 
+			        		//when we get the reply from the switch
+			        		vt_config.statsMap.put(msg.getXid(), virtPort);
+			        	}
+			        	else return false;
+					}
+					else return false;						
+				}
+			}
+			else if(statsReq.getStatisticType() == OFStatisticsType.AGGREGATE){
+				List<OFStatistics> inStatsList = statsReq.getStatistics();
+				
+				for (OFStatistics ofStats : inStatsList){
+					FVAggregateStatisticsRequest aggregateStats = (FVAggregateStatisticsRequest) ofStats;
+					Integer outVirtPort = Integer.valueOf((int)(aggregateStats.getOutPort()));	
+					if(U16.f(outVirtPort.shortValue()) < U16.f(OFPort.OFPP_MAX.getValue())){
+						if(VirtPortsMappings.get(outVirtPort) != null) {
+							LinkedList<Integer> InPortMap = VirtPortsMappings.get(outVirtPort);
+				        	if(InPortMap != null ) {
+				        		aggregateStats.setOutPort(InPortMap.get(0).shortValue());
+				        	}
+				        	else return false;
+						}
+						else return false;
+					}
+					
+					OFMatch match = aggregateStats.getMatch();
+					if(VirtPortsMappings.get(match.getInputPort()) != null) {
+						LinkedList<Integer> InPortMap = VirtPortsMappings.get(match.getInputPort());
+			        	if(InPortMap != null ) {
+			        		match.setInputPort(InPortMap.get(0).shortValue());
+			        	}
+			        	else return false;
+					}
+					else return false;
+						
+				}				
+			}
+			else if(statsReq.getStatisticType() == OFStatisticsType.TABLE){
+				//nothing to remap, just a reminder...
+			}
 		}
 		
 		return true;

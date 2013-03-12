@@ -74,7 +74,7 @@ public class VTHashMap implements Runnable {
 		MODIFY
 	}
 	
-	private VTHashMap(FVSlicer slicer, String sliceName) {
+	private VTHashMap(String sliceName) {
 		MACMap = new HashMap<Integer,HashMap<Integer,long []>>();
 		TimeMap = new HashMap<Integer,Long>();
 		matchVlinkMap = new HashMap<Long,HashMap<String,List<Object>>>();
@@ -92,10 +92,9 @@ public class VTHashMap implements Runnable {
  * @return pointer to the VTHashMap instance
  * @description this static method is used to get the pointer to the slice-specific instance of VTHashMap
  */	
-	public static VTHashMap getInstance(FVSlicer slicer,String sliceName) {
+	public static VTHashMap getInstance(String sliceName) {
 		if (instances.get(sliceName) == null) {
-			VTHashMap.saveSliceId(sliceName);
-			instances.put(sliceName, new VTHashMap(slicer, sliceName));
+			instances.put(sliceName, new VTHashMap(sliceName));
 		}
 		return instances.get(sliceName);
  	}
@@ -139,8 +138,7 @@ public class VTHashMap implements Runnable {
 	}
 	
 	private long getFakeSrcMAC(int linkId) {
-		short sliceId = VTHashMap.getSliceId(this.sliceName);
-		return (long) (IANA_OUI | (sliceId << 12) | linkId);
+		return (long) (IANA_OUI | (linkId & 0xFFFFFF));
 	}
 	
 /**
@@ -268,27 +266,6 @@ public class VTHashMap implements Runnable {
 
 	
 /**
- * @name saveSliceId
- * @authors roberto.doriguzzi matteo.gerola
- * @param String sliceName         
- * @return void
- * @description saves the slice Name along with an unique identifier
- */
-	public synchronized static void saveSliceId(String sliceName) {
-		short index = SliceIndex;
-		if(!SliceMap.containsKey(sliceName)) {
-			while(SliceMap.containsKey(Integer.toString(index)) || (index == 0)) {
-				if(++index > 0x000FFF) index = 1;
-				SliceIndex = index;
-			}
-			
-			SliceMap.put(sliceName, Long.toString(SliceIndex));
-			SliceMap.put(Long.toString(SliceIndex),sliceName);
-		}
-//		System.out.println("SliceMap: " + SliceMap.toString());
-	}
-	
-/**
  * @name removeSlice
  * @authors roberto.doriguzzi matteo.gerola
  * @param String sliceName         
@@ -301,32 +278,6 @@ public class VTHashMap implements Runnable {
 		SliceMap.remove(sliceName);
 		instances.remove(sliceName);
 	}
-	
-/**
- * @name getSliceId
- * @authors roberto.doriguzzi matteo.gerola
- * @param String sliceName         
- * @return long
- * @description returns the identifier associated to the sliceName
- */
-	private static short getSliceId(String sliceName) {
-		String id = SliceMap.get(sliceName);
-		if(id == null) return -1;
-		else return Short.valueOf(id);
-	}
-	
-/**
- * @name getSliceId
- * @authors roberto.doriguzzi matteo.gerola
- * @param long id         
- * @return String
- * @description returns the slice Name associated to the identifier "id"
- */
-	public static String getSliceName(long id) {
-		String sliceName = SliceMap.get(Long.toString(id));
-		if(sliceName == null) return null;
-		else return sliceName;
-	}
 
 
 /** 
@@ -336,11 +287,10 @@ public class VTHashMap implements Runnable {
  * @return short
  * @description returns the linkId for flows exiting a virtual link (and sometimes also when flow crosses a middlepoint)
  */
-	public short getLinkId(long switchId, OFMatch match, short inPort) {
-		short ret = 0;
+	public int getLinkId(long switchId, OFMatch match, short inPort) {
 		byte [] srcMAC = match.getDataLayerSource();
 		if((VTHashMap.mac2long(srcMAC) & 0x0000FFFFFF000000L) == IANA_OUI) { //tagged flows
-			ret = (short) (VTHashMap.mac2long(srcMAC) & 0x0000000000000FFFL);
+			return (int) (VTHashMap.mac2long(srcMAC) & 0x0000000000FFFFFFL);
 		}
 		else { // non-tagged flows
 			HashMap<String,List<Object>> linkPointSwitch = matchVlinkMap.get(switchId); //retrieving the information stored at the beginning of the vlink
@@ -361,19 +311,19 @@ public class VTHashMap implements Runnable {
 				}
 			}
 		}
-		return ret;
+		return 0;
 	}
 	
 /**
  * @name updateMatchTable
  * @authors roberto.doriguzzi matteo.gerola
- * @param OFMatch match, List<Object> remoteDP,int action        
+ * @param OFMatch match, List<Object> remoteDP, flow_rem_flag, int action        
  * @return void
  * @description modifies the content of the match table. An entry is added when a flow enters a virtual link from an endpoint. 
  * 				The entry  which contains the switchId and inPort of the remote endpoint of the virtual link. This info is used to recognize the 
  * 				linkId when the flow arrives to the remoet endpoint 
  */
-	public synchronized void updateMatchTable(OFMatch match, List<Object> info,int action) {
+	public synchronized void updateMatchTable(OFMatch match, List<Object> info, int action) {
 		OFMatch tmpMatch = VTChangeFlowMatch.VTChangeFM(match);
 		if (action == ACTION.ADD.ordinal()){
 			HashMap<String,List<Object>> remoteLinkPoint = matchVlinkMap.get((Long)info.get(INFOINDEX.SWITCH_ID.ordinal()));
@@ -382,7 +332,7 @@ public class VTHashMap implements Runnable {
 			tmpList.add(INFOINDEX.SWITCH_ID.ordinal(),(Long)info.get(INFOINDEX.SWITCH_ID.ordinal()));				
 			tmpList.add(INFOINDEX.LINK_ID.ordinal(),(Integer) info.get(INFOINDEX.LINK_ID.ordinal()));  	
 			tmpList.add(INFOINDEX.PHY_PORT.ordinal(),(Integer) info.get(INFOINDEX.PHY_PORT.ordinal()));  	
-			tmpList.add(INFOINDEX.VIRT_PORT.ordinal(),(Integer) info.get(INFOINDEX.VIRT_PORT.ordinal()));  			
+			tmpList.add(INFOINDEX.VIRT_PORT.ordinal(),(Integer) info.get(INFOINDEX.VIRT_PORT.ordinal()));
 			remoteLinkPoint.put(tmpMatch.toString(), tmpList);
 			matchVlinkMap.put((Long)info.get(0), remoteLinkPoint);  //saving the current switchId with the info of the remote endpoint 
 		} 
@@ -437,7 +387,43 @@ public class VTHashMap implements Runnable {
 			}
 	    }
 	}
-	
+
+/**
+ * @name RemoveStaticMiddlePointEntries
+ * @authors roberto.doriguzzi matteo.gerola
+ * @param Integer linkId,HashMap <Long,LinkedList<Integer>> MiddlePointList      
+ * @return void
+ * @description removes permanent flow entries from middle point switches.
+ */
+	public void RemoveStaticMiddlePointEntries(Integer linkId,HashMap <Long,LinkedList<Integer>> MiddlePointList) {
+		ArrayList <FVEventHandler> fvHandlersList = VeRTIGO.getInstance().getHandlersCopy();
+		for (Entry<Long,LinkedList<Integer>> middlePoint: MiddlePointList.entrySet()){
+			// looking for slicer and classifier that will be used to send the flowMod
+			FVSlicer slicer = null;
+			FVClassifier classifier = null;
+			for(FVEventHandler handler: fvHandlersList) {
+				if(handler.getName().contains(FlowSpaceUtil.dpidToString(middlePoint.getKey()))) {
+					if(handler.getName().contains("classifier")) {
+						classifier = (FVClassifier)handler;
+					}
+					if(handler.getName().contains("slicer") && handler.getName().contains(sliceName)) {
+						slicer = (FVSlicer)handler;
+					}
+				}
+			}
+			
+			// sending the flowMod to the middlePoint switch
+			if(classifier != null && slicer != null)
+			{
+				OFMatch match = new OFMatch().setWildcards(OFMatch.OFPFW_ALL & ~OFMatch.OFPFW_DL_SRC);
+									
+				match.setDataLayerSource(long2mac(getFakeSrcMAC(linkId)));
+				FVFlowMod msg = buildFlowMod(match, FVFlowMod.OFPFC_DELETE, linkId, -1, OFPort.OFPP_NONE.getValue(),(short)0,(short)0,(short)0);
+				msg.sliceFromController(classifier, slicer);
+			}
+			
+		}
+	}
 	
 /**
  * @name ManageMiddlePointEntries
@@ -476,7 +462,6 @@ public class VTHashMap implements Runnable {
 					tmpMiddlePoint.add(inPort);
 					tmpMiddlePoint.add(0);
 					if(flowMod.getCommand() == FVFlowMod.OFPFC_ADD) this.updateMatchTable(match, tmpMiddlePoint, VTHashMap.ACTION.ADD.ordinal());
-					//if(flowMod.getCommand() == FVFlowMod.OFPFC_DELETE) this.updateMatchTable(match, tmpMiddlePoint, VTHashMap.ACTION.DELETE.ordinal());
 					
 					// looking for slicer and classifier that will be used to send the flowMod
 					FVSlicer slicer = null;

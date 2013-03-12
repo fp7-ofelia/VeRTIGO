@@ -120,8 +120,7 @@ public class FVSlicer implements FVEventHandler, FVSendMsg {
 		
 		// VERTIGO
 		if(this.sliceName != "fvadmin"){
-			vt_config = new VTConfigInterface();
-			vt_config.vt_hashmap = VTHashMap.getInstance(this,sliceName);
+			vt_config = new VTConfigInterface(sliceName);
 		}
 		//END VERTIGO
 	}
