@@ -993,8 +993,8 @@ public class VTSqlDb {
 					+ " virtPortId = " + virtPortId);
 		}
 		rs.close ();
-		if (virtPortId <= 100)
-			virtPortId = 101;
+		if (virtPortId < VTConfigInterface.baseVirtPortNumber)
+			virtPortId = VTConfigInterface.baseVirtPortNumber;
 		return virtPortId;
 	}
 	

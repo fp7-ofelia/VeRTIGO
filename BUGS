@@ -1,13 +1,14 @@
 
-Please post bugs to:
+Please report bugs to:
 
-    https://openflow.stanford.edu/bugs/browse/FLOWVISOR
+    roberto.doriguzzi@create-net.org
+    matteo.gerola@create-net.org
 
 Any bug report is appreciated but the best bug reports include:
 
 1) if and how the bug can be replicated
 2) a stack trace (if available)
-3) tcpdump's of both the switch<-->FV and FV<-->controllers 
+3) tcpdump's of both the switch<-->VeRTIGO and VeRTIGO<-->controllers 
 	openflow control channels
         - make sure to set the capture length to 0 meaning
         capture the full packets.  Traces with partial packet captures

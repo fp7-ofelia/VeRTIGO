@@ -90,7 +90,7 @@ Build:
 Install:
     - make install
 
-See also file INSTALL in the root directory.
+See also file INSTALL in the root directory for further build options.
     
     
 NOTES ON INSTALLATION

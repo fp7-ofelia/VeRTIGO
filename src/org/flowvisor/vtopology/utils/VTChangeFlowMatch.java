@@ -19,38 +19,75 @@ public class VTChangeFlowMatch {
  * @name VTChangeFM
  * @info This function returns a clone of the match without the input port. The original match is not modified
  * @authors roberto.doriguzzi matteo.gerola
- * @params OFMatch
- * @return OFMatch: a copy (cloned) of the original match without inPort and without L3-L4 fields in case of specific wildcards
+ * @params OFMatch, boolean
+ * @return OFMatch: a copy (cloned) of the original match optionally without inPort and without L3-L4 fields in case of specific wildcards
  */
-	static public OFMatch VTChangeFM(OFMatch m) {
+	
+	static public OFMatch VTChangeFM(OFMatch m, boolean inPort) {
 		OFMatch match = m.clone();
-		match.setWildcards(match.getWildcards() | OFMatch.OFPFW_IN_PORT);
 		
-		// TP ports are included in the lookup only if IP_PROTO is not a wildcard or the IP packet is a TCP or UDP
-		if(((match.getWildcards() & OFMatch.OFPFW_NW_PROTO) > 0) || 
-		   ((match.getNetworkProtocol() != (byte)6) && (match.getNetworkProtocol() != (byte)17))) {
-			 match.setWildcards(match.getWildcards() | (OFMatch.OFPFW_TP_DST | OFMatch.OFPFW_TP_SRC));
-		}
-			
-		// L3-L4 fields are included in the lookup only if the DL_TYPE is not a wildcard or for VLAN, ARP and IP packets
-		if(((match.getWildcards() & OFMatch.OFPFW_DL_TYPE) > 0) || (match.getDataLayerType() != 0x800)){
+		//match.setWildcards(OFMatch.OFPFW_ALL);
+		if(inPort) match.setWildcards(match.getWildcards() & ~OFMatch.OFPFW_IN_PORT);
+		else match.setWildcards(match.getWildcards() | OFMatch.OFPFW_IN_PORT);
+
+		// L3-L4 fields are included in the lookup only if the DL_TYPE is not a wildcard
+		if((match.getWildcards() & OFMatch.OFPFW_DL_TYPE) > 0) {
 			match.setWildcards(match.getWildcards() | (OFMatch.OFPFW_NW_DST_ALL | OFMatch.OFPFW_NW_SRC_ALL));
 			match.setWildcards(match.getWildcards() | (OFMatch.OFPFW_NW_TOS));
 			match.setWildcards(match.getWildcards() | (OFMatch.OFPFW_NW_PROTO));
 			match.setWildcards(match.getWildcards() | (OFMatch.OFPFW_TP_DST | OFMatch.OFPFW_TP_SRC));
 		}
-		// if the packet is a VLAN (DL_TYPE=0x8100) the VLAN_PCP is included in the lookup
-		else if(match.getDataLayerType() != 0x8100) { //VLAN packet
-			match.setWildcards(match.getWildcards() & ~(OFMatch.OFPFW_DL_VLAN));
-			match.setWildcards(match.getWildcards() & ~(OFMatch.OFPFW_DL_VLAN_PCP));
+		else if(match.getDataLayerType() == 0x806) {
+			match.setWildcards(match.getWildcards() & ~OFMatch.OFPFW_NW_SRC_ALL);
+			match.setWildcards(match.getWildcards() & ~OFMatch.OFPFW_NW_DST_ALL);
+			match.setWildcards(match.getWildcards() & ~OFMatch.OFPFW_NW_PROTO);
+			match.setWildcards(match.getWildcards() | OFMatch.OFPFW_NW_TOS);
+			match.setWildcards(match.getWildcards() | OFMatch.OFPFW_TP_SRC);
+			match.setWildcards(match.getWildcards() | OFMatch.OFPFW_TP_DST);
 		}
-		else if(match.getDataLayerType() != 0x806) { //ARP packet
-			match.setWildcards(match.getWildcards() | (OFMatch.OFPFW_NW_DST_ALL | OFMatch.OFPFW_NW_SRC_ALL));
-			match.setWildcards(match.getWildcards() | (OFMatch.OFPFW_NW_PROTO));
+		else if(match.getDataLayerType() == 0x800) {
+			match.setWildcards(match.getWildcards() & ~OFMatch.OFPFW_NW_SRC_ALL);
+			match.setWildcards(match.getWildcards() & ~OFMatch.OFPFW_NW_DST_ALL);
+			match.setWildcards(match.getWildcards() & ~OFMatch.OFPFW_NW_TOS);
+			match.setWildcards(match.getWildcards() & ~OFMatch.OFPFW_NW_PROTO);
+			
+			// TP ports are included in the lookup only if IP_PROTO is not a wildcard or the IP packet is a TCP or UDP
+			if((match.getWildcards() & OFMatch.OFPFW_NW_PROTO) > 0) {
+				match.setWildcards(match.getWildcards() | OFMatch.OFPFW_TP_SRC);
+				match.setWildcards(match.getWildcards() | OFMatch.OFPFW_TP_DST);
+			}
+			else if((match.getNetworkProtocol() == (byte)1) || (match.getNetworkProtocol() == (byte)6) || (match.getNetworkProtocol() == (byte)17)) {
+				match.setWildcards(match.getWildcards() & ~OFMatch.OFPFW_TP_SRC);
+				match.setWildcards(match.getWildcards() & ~OFMatch.OFPFW_TP_DST);
+			}
 		}
+		
+//		match.setWildcards(match.getWildcards() | OFMatch.OFPFW_IN_PORT);
+//		
+//		// TP ports are included in the lookup only if IP_PROTO is not a wildcard or the IP packet is a TCP or UDP
+//		if(((match.getWildcards() & OFMatch.OFPFW_NW_PROTO) > 0) || 
+//		   ((match.getNetworkProtocol() != (byte)6) && (match.getNetworkProtocol() != (byte)17))) {
+//			 match.setWildcards(match.getWildcards() | (OFMatch.OFPFW_TP_DST | OFMatch.OFPFW_TP_SRC));
+//		}
+//			
+//		// L3-L4 fields are included in the lookup only if the DL_TYPE is not a wildcard or for VLAN, ARP and IP packets
+//		if(((match.getWildcards() & OFMatch.OFPFW_DL_TYPE) > 0) || (match.getDataLayerType() != 0x800)){
+//			match.setWildcards(match.getWildcards() | (OFMatch.OFPFW_NW_DST_ALL | OFMatch.OFPFW_NW_SRC_ALL));
+//			match.setWildcards(match.getWildcards() | (OFMatch.OFPFW_NW_TOS));
+//			match.setWildcards(match.getWildcards() | (OFMatch.OFPFW_NW_PROTO));
+//			match.setWildcards(match.getWildcards() | (OFMatch.OFPFW_TP_DST | OFMatch.OFPFW_TP_SRC));
+//		}
+//		// if the packet is a VLAN (DL_TYPE=0x8100) the VLAN_PCP is included in the lookup
+//		else if(match.getDataLayerType() != 0x8100) { //VLAN packet
+//			match.setWildcards(match.getWildcards() & ~(OFMatch.OFPFW_DL_VLAN));
+//			match.setWildcards(match.getWildcards() & ~(OFMatch.OFPFW_DL_VLAN_PCP));
+//		}
+//		else if(match.getDataLayerType() != 0x806) { //ARP packet
+//			match.setWildcards(match.getWildcards() | (OFMatch.OFPFW_NW_DST_ALL | OFMatch.OFPFW_NW_SRC_ALL));
+//			match.setWildcards(match.getWildcards() | (OFMatch.OFPFW_NW_PROTO));
+//		}
 		return match;
 	}
-
 	
 /**
  * @name VTChangeFM

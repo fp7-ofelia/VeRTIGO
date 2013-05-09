@@ -16,23 +16,47 @@ INSTALL:
     - make install
 
     This puts scripts and jars into a specified $prefix
+    
 
 CONFIG:
     Build a default configuration with:
-    fvconfig generate <config.xml>
+    veconfig generate <config.xml>
 
     List the contents of the config.xml:
-    fvconfig dump <config.xml>
+    veconfig dump <config.xml>
 
-    The best way to edit the config is to run flowvisor (below)
-    and use fvctl to to issue commands to the running flowvisor.
+    The best way to edit the config is to run vertigo (below)
+    and use vectl to to issue commands to the running vertigo.
 
 RUN: 
-    To run flowvisor:
-        flowvisor config.xml
+    To run vertigo:
+        vertigo config.xml
 
-        or link the /etc/init.d/flowvisor script into your 
-        systems startup.
+    Then, give the following commands (deleting VTs implicitly deletes the rules
+    associated with them):
 
-    To configure running flowvisor, use ./scripts/fvctl.sh
-        `man 1 fvctl` or `man ./doc/fvctl.1` for details
+	vectl deleteSlice alice
+
+	vectl deleteSlice bob
+
+    where vectl is the VeRTIGO's configuration tool, a modified version of the
+    original FlowVisor's fvctl script with some additional options that can 
+    be used to define and instantiate Virtual Links.
+
+    You can now define a new VT called charlie that will catch all flows from 
+    all switches with commands:
+
+    vectl createSlice charlie tcp:yourhost.com:10001 slice-email@yourhost.com
+
+    vectl addFlowSpace any 10 any "Slice:charlie=4"
+
+
+BUILD WITH ECLIPSE:
+    After the above installation process, import the project in eclipse and set 
+    the following Run/Debug settings:
+	
+	Program arguments: config.xml
+	VM arguments: 
+	  -Djavax.net.ssl.keyStore=/usr/local/etc/vertigo/mySSLKeyStore 
+	  -Djavax.net.ssl.keyStorePassword=CHANGEME_PASSWD
+

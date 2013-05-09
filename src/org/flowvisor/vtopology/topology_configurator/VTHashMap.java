@@ -20,6 +20,7 @@ import org.flowvisor.message.Slicable;
 import org.flowvisor.message.actions.FVActionOutput;
 import org.flowvisor.slicer.FVSlicer;
 import org.flowvisor.vtopology.utils.VTChangeFlowMatch;
+import org.flowvisor.vtopology.utils.VTLog;
 import org.openflow.protocol.OFFlowMod;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
@@ -31,7 +32,7 @@ import org.openflow.util.U16;
 
 public class VTHashMap implements Runnable {
 	private HashMap<Integer,HashMap<Integer,long []>> MACMap;  // <flow_index,<linkId,MAC[MACINDEX]>>
-	private HashMap<Integer,Long> TimeMap;  // <flow_index,time>
+	private HashMap<Integer,Long> MACTimeMap;  // <flow_index,time>
 	private HashMap<Long,HashMap<String,List<Object>>> matchVlinkMap; // <switchID,<match,[time,linkId,phyPortId,virtPortId]>>
 	private static HashMap<String,String> SliceMap = new HashMap<String,String>(); 
 	private static HashMap<String,VTHashMap> instances = new HashMap<String,VTHashMap>();
@@ -76,7 +77,7 @@ public class VTHashMap implements Runnable {
 	
 	private VTHashMap(String sliceName) {
 		MACMap = new HashMap<Integer,HashMap<Integer,long []>>();
-		TimeMap = new HashMap<Integer,Long>();
+		MACTimeMap = new HashMap<Integer,Long>();
 		matchVlinkMap = new HashMap<Long,HashMap<String,List<Object>>>();
 		this.sliceName = sliceName;
 		instances.put(sliceName, this);
@@ -153,114 +154,104 @@ public class VTHashMap implements Runnable {
 		Integer ret = null;
 		java.sql.Timestamp  sqlDate = new java.sql.Timestamp(new java.util.Date().getTime());
 		
-//		System.out.println("updateFlowInfo PARAMETERS case: " + action + " linkId: " + linkId + " index: " + id + " srcMAC: " + Long.toHexString(mac2long(srcMAC)) + " dstMAC: " + Long.toHexString(mac2long(dstMAC)));
+		VTLog.VTHashMap("--------------------------------------------");
+		VTLog.VTHashMap("updateFlowInfo PARAMETERS case: " + action + " linkId: " + linkId + " index: " + id + " srcMAC: " + Long.toHexString(mac2long(srcMAC)) + " dstMAC: " + Long.toHexString(mac2long(dstMAC)));
 			
-		switch(action) {
-			case 0 : {//Switch->Controller PACKET_IN at the end of a virtual link
-				
-				if((mac2long(srcMAC) & 0x0000FFFFFF000000L) == IANA_OUI &&
-				   (mac2long(dstMAC) & 0x0000FFFFFF000000L) == IANA_OUI	) {
-					int index = ((int)(mac2long(dstMAC) & 0x0000000000FFFFFF));
-					HashMap<Integer,long []> tempMap = this.MACMap.get(index);
-					if(tempMap != null) {
-						this.TimeMap.put(index, sqlDate.getTime()); 					//update timestamp
-						long [] baseList =	tempMap.get(0);
-						long [] linkList =	tempMap.get(linkId);
-						if(baseList != null && linkList != null) {
-							if(index == (linkList[MACINDEX.DSTMAClink.ordinal()]  & 0x0000000000FFFFFF)) { 							
-								System.arraycopy(long2mac(baseList[MACINDEX.SRCMAC.ordinal()]), 0, srcMAC, 0, ADDRESS_LENGTH); // passing the original srcMAC to the controller
-								System.arraycopy(long2mac(baseList[MACINDEX.DSTMAC.ordinal()]), 0, dstMAC, 0, ADDRESS_LENGTH); //passing the original dstMAC to the controller
-								ret = index;
-							}
+		if(action == FLOWINFO_ACTION.PACKETIN.ordinal()) {
+			//Switch->Controller PACKET_IN at the end of a virtual link				
+			if((mac2long(srcMAC) & 0x0000FFFFFF000000L) == IANA_OUI &&
+			   (mac2long(dstMAC) & 0x0000FFFFFF000000L) == IANA_OUI	) {
+				int index = ((int)(mac2long(dstMAC) & 0x0000000000FFFFFF));
+				HashMap<Integer,long []> tempMap = this.MACMap.get(index);
+				if(tempMap != null) {
+					this.MACTimeMap.put(index, sqlDate.getTime()); 					//update timestamp
+					long [] baseList =	tempMap.get(0);
+					long [] linkList =	tempMap.get(linkId);
+					if(baseList != null && linkList != null) {
+						if(index == (linkList[MACINDEX.DSTMAClink.ordinal()]  & 0x0000000000FFFFFF)) { 							
+							System.arraycopy(long2mac(baseList[MACINDEX.SRCMAC.ordinal()]), 0, srcMAC, 0, ADDRESS_LENGTH); // passing the original srcMAC to the controller
+							System.arraycopy(long2mac(baseList[MACINDEX.DSTMAC.ordinal()]), 0, dstMAC, 0, ADDRESS_LENGTH); //passing the original dstMAC to the controller
+							ret = index;
 						}
-						else ret = null;
 					}
 					else ret = null;
 				}
-				else { //Beginning of the virtual link
-					int index = this.MACIndex;
-					long [] tempList = new long [MACINDEX.DSTMAClink.ordinal() + 1];
-					while(this.MACMap.containsKey(index) || (index == 0)) {
-						if(++index > 0xFFFFFF) index = 1;
-						this.MACIndex = index;
-					}	
-					 	
-					tempList[MACINDEX.LINK_ID.ordinal()] = (long)0;			//the flow is not arriving from a virtual link
-					tempList[MACINDEX.SRCMAC.ordinal()] = mac2long(srcMAC); //saving the original srcMAC value
-					tempList[MACINDEX.DSTMAC.ordinal()] = mac2long(dstMAC);	//saving the original dstMAC value	
-					tempList[MACINDEX.SRCMAClink.ordinal()] = 0; 			//initial setting fake srcMAC to 0
-					tempList[MACINDEX.DSTMAClink.ordinal()] = 0;  			//initial setting fake dstMAC to 0
-					
-					HashMap<Integer,long []> tempMap = new HashMap<Integer,long []>();
-					tempMap.put(0, tempList);  // linkid = 0			
-					this.MACMap.put(index, tempMap);
-					this.TimeMap.put(index, sqlDate.getTime()); 					//update timestamp
-					ret = index;
-				}
-					
-				break;
+				else ret = null;
 			}
-			case 1: {//Controller->Switch PACKET_OUT actions
-				HashMap<Integer,long []> tempMap = this.MACMap.get(id);
-				if(tempMap != null) {
-					TimeMap.put(id, sqlDate.getTime()); 					//update timestamp
-					
-					if(linkId > 0) {// out to a virtual link 
-						long [] tempList = new long [MACINDEX.DSTMAClink.ordinal() + 1];  // is "null" only for linkId>0
-						tempList[MACINDEX.SRCMAClink.ordinal()] = getFakeSrcMAC(linkId); 	//this will be used as srcMACfake
-						tempList[MACINDEX.DSTMAClink.ordinal()] = (IANA_OUI | id);  	//this will be used as dstMACfake
-						System.arraycopy(long2mac(getFakeSrcMAC(linkId)), 0, srcMAC, 0, ADDRESS_LENGTH); 
-						System.arraycopy(long2mac(IANA_OUI | id), 0, dstMAC, 0, ADDRESS_LENGTH);
-						tempMap.put(linkId, tempList);
+			//Switch->Controller PACKET_IN at the beginning of a virtual link		
+			else {
+				int index = this.MACIndex;
+				long [] tempList = new long [MACINDEX.DSTMAClink.ordinal() + 1];
+				while(this.MACMap.containsKey(index) || (index == 0)) {
+					if(++index > 0xFFFFFF) index = 1;
+					this.MACIndex = index;
+				}	
+				 	
+				tempList[MACINDEX.LINK_ID.ordinal()] = (long)0;			//the flow is not arriving from a virtual link
+				tempList[MACINDEX.SRCMAC.ordinal()] = mac2long(srcMAC); //saving the original srcMAC value
+				tempList[MACINDEX.DSTMAC.ordinal()] = mac2long(dstMAC);	//saving the original dstMAC value	
+				tempList[MACINDEX.SRCMAClink.ordinal()] = 0; 			//initial setting fake srcMAC to 0
+				tempList[MACINDEX.DSTMAClink.ordinal()] = 0;  			//initial setting fake dstMAC to 0
+				
+				HashMap<Integer,long []> tempMap = new HashMap<Integer,long []>();
+				tempMap.put(0, tempList);  // linkid = 0			
+				this.MACMap.put(index, tempMap);
+				this.MACTimeMap.put(index, sqlDate.getTime()); 					//update timestamp
+				ret = index;
+			}
+		}
+		else if(action == FLOWINFO_ACTION.PACKETOUT.ordinal()) {//Controller->Switch PACKET_OUT and FLOW_MOD actions
+			HashMap<Integer,long []> tempMap = this.MACMap.get(id);
+			if(tempMap != null) {
+				MACTimeMap.put(id, sqlDate.getTime()); 					//update timestamp
+				
+				if(linkId > 0) {// out to a virtual link 
+					long [] tempList = new long [MACINDEX.DSTMAClink.ordinal() + 1];  // is "null" only for linkId>0
+					tempList[MACINDEX.SRCMAClink.ordinal()] = getFakeSrcMAC(linkId); 	//this will be used as srcMACfake
+					tempList[MACINDEX.DSTMAClink.ordinal()] = (IANA_OUI | id);  	//this will be used as dstMACfake
+					System.arraycopy(long2mac(getFakeSrcMAC(linkId)), 0, srcMAC, 0, ADDRESS_LENGTH); 
+					System.arraycopy(long2mac(IANA_OUI | id), 0, dstMAC, 0, ADDRESS_LENGTH);
+					tempMap.put(linkId, tempList);
+					ret = id;
+				}
+				else { // out to a standard link
+					long [] tempList =	tempMap.get(0);
+					if(tempList != null) {
+						System.arraycopy(long2mac(tempList[MACINDEX.SRCMAC.ordinal()]), 0, srcMAC, 0, ADDRESS_LENGTH); 
+						System.arraycopy(long2mac(tempList[MACINDEX.DSTMAC.ordinal()]), 0, dstMAC, 0, ADDRESS_LENGTH); 
 						ret = id;
 					}
-					else { // out to a standard link
-						long [] tempList =	tempMap.get(0);
-						if(tempList != null) {
-							System.arraycopy(long2mac(tempList[MACINDEX.SRCMAC.ordinal()]), 0, srcMAC, 0, ADDRESS_LENGTH); 
-							System.arraycopy(long2mac(tempList[MACINDEX.DSTMAC.ordinal()]), 0, dstMAC, 0, ADDRESS_LENGTH); 
-							ret = id;
-						}
-						else ret = null;
-					}
-				}
-				else ret = null;
-				break;
-			}
-			case 2: {//Controller->Switch FLOW_MOD actions
-				HashMap<Integer,long []> tempMap = this.MACMap.get(id);
-				
-				if(tempMap != null && linkId > 0) {							
-					TimeMap.put(id, sqlDate.getTime()); 					//update timestamp
-					long [] linkList =	tempMap.get(linkId);				 
-					if(linkList != null) {
-//						for(int i=0;i<MACINDEX.DSTMAClink.ordinal() + 1;i++) {
-//							System.out.println("linkList: " + Long.toHexString(linkList[i]));
-//						}
-						
-						if(id == (linkList[MACINDEX.DSTMAClink.ordinal()]  & 0x0000000000FFFFFF)) { 							
-							System.arraycopy(long2mac(linkList[MACINDEX.SRCMAClink.ordinal()]), 0, srcMAC, 0, ADDRESS_LENGTH); // passing the original srcMAC to the controller
-							System.arraycopy(long2mac(linkList[MACINDEX.DSTMAClink.ordinal()]), 0, dstMAC, 0, ADDRESS_LENGTH); //passing the original dstMAC to the controller
-							ret = id;
-						}
-					}
 					else ret = null;
 				}
-				else ret = null;
-				break;
 			}
-			
-			case 3: {//Deleting old entries
-				this.MACMap.remove(id);
-				this.TimeMap.remove(id);
-				break;
-			}
-			
-			default: 
-				ret = null;
-				break;
+			else ret = null;
 		}
-//		System.out.println("updateFlowInfo RETURN VALUES  srcMAC: " + Long.toHexString(mac2long(srcMAC)) + " dstMAC: " + Long.toHexString(mac2long(dstMAC)));
+		else if(action == FLOWINFO_ACTION.FLOWMOD.ordinal()) {//Controller->Switch FLOW_MOD actions
+			HashMap<Integer,long []> tempMap = this.MACMap.get(id);
+			
+			if(tempMap != null && linkId > 0) {							
+				MACTimeMap.put(id, sqlDate.getTime()); 					//update timestamp
+				long [] linkList =	tempMap.get(linkId);				 
+				if(linkList != null) {
+					if(id == (linkList[MACINDEX.DSTMAClink.ordinal()]  & 0x0000000000FFFFFF)) { 							
+						System.arraycopy(long2mac(linkList[MACINDEX.SRCMAClink.ordinal()]), 0, srcMAC, 0, ADDRESS_LENGTH); 
+						System.arraycopy(long2mac(linkList[MACINDEX.DSTMAClink.ordinal()]), 0, dstMAC, 0, ADDRESS_LENGTH); 
+						ret = id;
+					}
+				}
+				else ret = null;
+			}
+			else ret = null;
+		}			
+		else if(action == FLOWINFO_ACTION.DELETE.ordinal()) {//Deleting old entries
+			this.MACMap.remove(id);
+			this.MACTimeMap.remove(id);
+			
+			VTLog.VTHashMap("updateFlowInfo MACMap after DELETE: " + MACMap);
+			VTLog.VTHashMap("updateFlowInfo TimeMap after DELETE: " + MACTimeMap);
+		}
+			
+		VTLog.VTHashMap("updateFlowInfo RETURN VALUES  srcMAC: " + Long.toHexString(mac2long(srcMAC)) + " dstMAC: " + Long.toHexString(mac2long(dstMAC)));
 		return ret;
 	}
 
@@ -285,7 +276,7 @@ public class VTHashMap implements Runnable {
  * @authors roberto.doriguzzi matteo.gerola
  * @param long switchId, OFMatch match         
  * @return short
- * @description returns the linkId for flows exiting a virtual link (and sometimes also when flow crosses a middlepoint)
+ * @description returns the linkId for flows exiting a virtual link or crossing a middlepoint
  */
 	public int getLinkId(long switchId, OFMatch match, short inPort) {
 		byte [] srcMAC = match.getDataLayerSource();
@@ -294,9 +285,8 @@ public class VTHashMap implements Runnable {
 		}
 		else { // non-tagged flows
 			HashMap<String,List<Object>> linkPointSwitch = matchVlinkMap.get(switchId); //retrieving the information stored at the beginning of the vlink
-//			System.out.println("getLinkId switchId: " + Long.toHexString(switchId));
 			if(linkPointSwitch != null) {
-				OFMatch savedMatch = VTChangeFlowMatch.VTChangeFM(match);
+				OFMatch savedMatch = VTChangeFlowMatch.VTChangeFM(match,false);
 				for (Entry<String,List<Object>> matchHashMap: linkPointSwitch.entrySet()){
 					OFMatch tmpMatch = new OFMatch();
 					tmpMatch.fromString(matchHashMap.getKey());
@@ -320,11 +310,11 @@ public class VTHashMap implements Runnable {
  * @param OFMatch match, List<Object> remoteDP, flow_rem_flag, int action        
  * @return void
  * @description modifies the content of the match table. An entry is added when a flow enters a virtual link from an endpoint. 
- * 				The entry  which contains the switchId and inPort of the remote endpoint of the virtual link. This info is used to recognize the 
- * 				linkId when the flow arrives to the remoet endpoint 
+ * 				The entry, which contains the switchId and inPort of the remote endpoint of the virtual link, is used to recognize the 
+ * 				linkId when the flow arrives to the remote endpoint 
  */
 	public synchronized void updateMatchTable(OFMatch match, List<Object> info, int action) {
-		OFMatch tmpMatch = VTChangeFlowMatch.VTChangeFM(match);
+		OFMatch tmpMatch = VTChangeFlowMatch.VTChangeFM(match,false);
 		if (action == ACTION.ADD.ordinal()){
 			HashMap<String,List<Object>> remoteLinkPoint = matchVlinkMap.get((Long)info.get(INFOINDEX.SWITCH_ID.ordinal()));
 			if(remoteLinkPoint == null) remoteLinkPoint = new HashMap<String,List<Object>>();
@@ -344,7 +334,7 @@ public class VTHashMap implements Runnable {
 					if(info.get(INFOINDEX.LINK_ID.ordinal()) == tmpList.get(INFOINDEX.LINK_ID.ordinal())) {
 						remoteLinkPoint.remove(tmpMatch.toString());
 						if(remoteLinkPoint.size() == 0) matchVlinkMap.remove((Long)info.get(INFOINDEX.SWITCH_ID.ordinal()));	
-//						System.out.println("matchVlinkMap: " + matchVlinkMap);
+						VTLog.VTHashMap("updateMatchTable DELETE matchVlinkMap: " + matchVlinkMap);
 					}
 				}
 			}
@@ -363,6 +353,8 @@ public class VTHashMap implements Runnable {
  * @description installs permanent flow entries for middle point switches for tagged flows. The entries are installed only for the links contained in the list
  */
 	public void InstallStaticMiddlePointEntries(FVSlicer slicer, FVClassifier fromSwitch, short inPort, Integer buffer_id, HashMap <Integer,LinkedList<Integer>> linkList) {
+		VTLog.VTHashMap("--------------------------------------------");
+		VTLog.VTHashMap("InstallStaticMiddlePointEntries - switchId: " + Long.toHexString(fromSwitch.getDPID()));
 		for(Integer linkId: linkList.keySet()) {
 			LinkedList<Integer> portList = linkList.get(linkId);
 			if(portList.size() == 2){
@@ -378,11 +370,13 @@ public class VTHashMap implements Runnable {
 
 					match.setInputPort(port0);
 					FVFlowMod msg0 = buildFlowMod(match, OFFlowMod.OFPFC_ADD, linkId, buffer_id0, port1,(short)0,(short)0,DEFAULT_PRIORITY);
-					msg0.sliceFromController(fromSwitch, slicer);					
+					msg0.sliceFromController(fromSwitch, slicer);		
+					VTLog.VTHashMap("InstallStaticMiddlePointEntries - flowMod0: " + msg0);
 					
 					match.setInputPort(port1);
 					FVFlowMod msg1 = buildFlowMod(match, OFFlowMod.OFPFC_ADD, linkId, buffer_id1, port0,(short)0,(short)0,DEFAULT_PRIORITY);
 					msg1.sliceFromController(fromSwitch, slicer);
+					VTLog.VTHashMap("InstallStaticMiddlePointEntries - flowMod1: " + msg1);
 				}
 			}
 	    }
@@ -435,25 +429,22 @@ public class VTHashMap implements Runnable {
 	public void ManageMiddlePointEntries(Long switchId, FVFlowMod flowMod, Integer linkId,HashMap <Long,LinkedList<Integer>> MiddlePointList,HashMap <LinkedList<Long>,Integer> HopList) {
 		ArrayList <FVEventHandler> fvHandlersList = VeRTIGO.getInstance().getHandlersCopy();
 		OFMatch match = flowMod.getMatch().clone();	
-//		System.out.println("InstallMiddlePointEntries flowMod match wildcards: " + match);
+		
+		VTLog.VTHashMap("--------------------------------------------");
+		VTLog.VTHashMap("ManageMiddlePointEntries from switch: " + switchId + " flowMod match: " + match);
 		
 		int max_loops = MiddlePointList.size();
 		int entries_to_send = MiddlePointList.size();
-//		System.out.println("MiddlePointList size: "+ MiddlePointList.size());
+		long prev_switchId = switchId;
 		do {  // this loop because middlepoints in MiddlePointList could not be in the right order
-//			System.out.println(">>>>>>>>>>>>>>>>>Ciclo DO");
 			
 			for (Entry<Long,LinkedList<Integer>> middlePoint: MiddlePointList.entrySet()){
-//				System.out.println(">>>>>>>>>>>>>>>>>Ciclo For");
+				if(middlePoint.getKey() == prev_switchId) continue; 
 				LinkedList <Long> TmpList = new LinkedList <Long>();
 				TmpList.add(0,middlePoint.getKey());
 				TmpList.add(1,switchId);
 				Integer inPort = HopList.get(TmpList);
-//				System.out.println("middlePoint.getKey(): " + middlePoint.getKey());
-//				System.out.println("switchId: " + switchId);
-//				System.out.println("inPort: " + inPort);
 				if(inPort != null){
-					
 					// here we save the middlepoint and the inPort in the hashMap (we need this because sometime 
 					// the flow is processed by the switch before the flowMod below)
 					List <Object> tmpMiddlePoint = new ArrayList <Object>(); 
@@ -470,11 +461,11 @@ public class VTHashMap implements Runnable {
 						if(handler.getName().contains(FlowSpaceUtil.dpidToString(middlePoint.getKey()))) {
 							if(handler.getName().contains("classifier")) {
 								classifier = (FVClassifier)handler;
-//								System.out.println("classifier name: " + classifier.getName());
+								VTLog.VTHashMap("ManageMiddlePointEntries classifier name: " + classifier.getName());
 							}
 							if(handler.getName().contains("slicer") && handler.getName().contains(sliceName)) {
 								slicer = (FVSlicer)handler;
-//								System.out.println("slicer name: " + slicer.getName());
+								VTLog.VTHashMap("ManageMiddlePointEntries slicer name: " + slicer.getName());
 							}
 						}
 					}
@@ -486,9 +477,11 @@ public class VTHashMap implements Runnable {
 											
 						match.setInputPort(inPort.shortValue());
 						FVFlowMod msg0 = buildFlowMod(match, flowMod.getCommand(), linkId, -1, outPort,flowMod.getIdleTimeout(),flowMod.getHardTimeout(),flowMod.getPriority());
+						VTLog.VTHashMap("ManageMiddlePointEntries - Installed flowMod: " + msg0);
 						msg0.sliceFromController(classifier, slicer);
 
 						// update the switchId for the next hop
+						prev_switchId = switchId;
 						switchId = middlePoint.getKey();
 						entries_to_send--;
 					}
@@ -496,8 +489,6 @@ public class VTHashMap implements Runnable {
 				if(entries_to_send == 0) break;
 			}
 			max_loops--;
-//			System.out.println("entries_to_send: " + entries_to_send);
-//			System.out.println("max_loops: " + max_loops);
 		} while (entries_to_send > 0 && max_loops > 0);
 				
 	}
@@ -505,7 +496,7 @@ public class VTHashMap implements Runnable {
 /**
  * @name buildFlowMod
  * @authors roberto.doriguzzi matteo.gerola
- * @param short command, OFMatch match, short outPort         
+ * @param OFMatch match, short command, Integer linkId, int buffer_id, short outPort, short idleTO, short hardTO, short priority        
  * @return FVFlowMod
  * @description build a OFFlowMod msg to be sent to a middlepoint switch
  */
@@ -553,7 +544,7 @@ public class VTHashMap implements Runnable {
     			java.sql.Timestamp  sqlDate = new java.sql.Timestamp(new java.util.Date().getTime());
     			Long current_time = sqlDate.getTime();
     			List<Integer> id_list = new LinkedList<Integer>();
-    			for(Entry<Integer,Long> id_time: this.TimeMap.entrySet()) {
+    			for(Entry<Integer,Long> id_time: this.MACTimeMap.entrySet()) {
     				if(id_time.getValue() < (current_time - EXPIRATION_TIME)) {
     					id_list.add(id_time.getKey());
     				}

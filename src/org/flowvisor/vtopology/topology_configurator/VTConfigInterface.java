@@ -16,6 +16,7 @@ import org.flowvisor.message.FVFlowMod;
 import org.flowvisor.message.FVPacketIn;
 import org.flowvisor.message.FVPacketOut;
 import org.flowvisor.slicer.FVSlicer;
+import org.flowvisor.vtopology.utils.VTLog;
 import org.openflow.protocol.OFMatch;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPhysicalPort;
@@ -32,6 +33,7 @@ public class VTConfigInterface {
 	private VTSqlDb dbQuery;
 	public VTHashMap vt_hashmap;
 	private String sliceName;
+	public final static short baseVirtPortNumber = 101;
 	
 /**
  * @name Constructor
@@ -275,7 +277,7 @@ public class VTConfigInterface {
 		
 		try {
 			LinkList = dbQuery.sqlGetMiddlePointLinks(sliceId, fromSwitch.getDPID(),linkId);
-//			System.out.println("InstallMiddlePointEntries Slice: " + sliceId + " Switch: " + Long.toHexString(fromSwitch.getDPID()) + " LinkList: " + LinkList.toString());
+			VTLog.VTConfigInterface("InstallStaticMiddlePointEntries Slice: " + sliceId + " Switch: " + Long.toHexString(fromSwitch.getDPID()) + " LinkList: " + LinkList.toString());
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -331,8 +333,8 @@ public class VTConfigInterface {
 		try {
 			MiddlePointList = dbQuery.sqlGetLinkMiddlePoints(sliceId, linkId);
 			HopList = dbQuery.sqlGetLinkHops(sliceId, linkId); 
-//			System.out.println("ManageMiddlePointEntries Slice: " + sliceId + " MiddlePointList: " + MiddlePointList.toString());
-//			System.out.println("ManageMiddlePointEntries Slice: " + sliceId + " HopList: " + HopList.toString());
+			VTLog.VTConfigInterface("ManageMiddlePointEntries Slice: " + sliceId + " MiddlePointList: " + MiddlePointList.toString());
+			VTLog.VTConfigInterface("ManageMiddlePointEntries Slice: " + sliceId + " HopList: " + HopList.toString());
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -358,7 +360,7 @@ public class VTConfigInterface {
 		
 		try {
 			ret = dbQuery.sqlGetVirtualPortLinkMapping(sliceId,switchId);
-//			System.out.println("Slice: " + sliceId + " Switch: " + Long.toHexString(switchId) + " LinkMap: " + ret);
+			VTLog.VTConfigInterface("Slice: " + sliceId + " Switch: " + Long.toHexString(switchId) + " LinkMap: " + ret);
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -368,26 +370,6 @@ public class VTConfigInterface {
 		
 		return ret;
 	}
-	
-/**
- * @name searchFlowMod
- * @authors roberto.doriguzzi matteo.gerola
- * @info Looks for the original flowMod sent by the controller with buffer_id=-1
- * @param OFMatch match = match of the packet_in message  
- * @return ret = the original flowMod 
- */
-//	public FVFlowMod searchFlowMod(OFMatch match) {
-//		FVFlowMod ret = null;
-//		
-//		for(Entry<OFMatch,FVFlowMod> entry: flowModMap.entrySet()){
-//			if(entry.getKey().subsumes(match))
-//				return entry.getValue();
-//		}
-//		
-//		
-//		return ret;
-//	}
-//	
 	
 /**
  * @name saveFlowMatch

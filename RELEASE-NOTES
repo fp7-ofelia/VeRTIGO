@@ -1,4 +1,26 @@
-VeRTIGO 1.0.0 : May 31 2012
+VeRTIGO 0.3.5 : 2013-05.09 Thu Roberto Doriguzzi roberto.doriguzzi@create-net.org
+  * Fixed bug that prevented the correct installation of the entries on middlepoint 
+    switches for virtual links composed of 3 or more hops
+  * Added the VTLog class which enables the developer to selectively print on the stdout the debug
+    messages from the vtopology classes (selection can be made from the command line with option -v)
+  * Added a class that clones the OFPhysycalPort (only used to remap the FeaturesReply msgs)
+  * Fixed the remapping of ports for FEATURES_REPLY messages
+  * Other minor bug fixes
+  * Improved documentation
+
+VeRTIGO 0.3.0-beta : 2013-02-28 Thu Roberto Doriguzzi roberto.doriguzzi@create-net.org
+  * Improved mechanism that handles Virtual Links by using tagged MAC addresses
+  * Improved management of LLDP messages
+
+VeRTIGO 0.2.2 : 2013-01-08 Tue Roberto Doriguzzi roberto.doriguzzi@create-net.org
+  * Minor bug fixes
+
+VeRTIGO 0.2.1 : 2012-11-15 Thu Roberto Doriguzzi roberto.doriguzzi@create-net.org
+  * Added support for Floodlight controller
+  * Added the "Traffic Statistic Collection" module which is used by the VT-Planner to compute its best-path algorithm
+  * Minor bug fixes
+
+VeRTIGO 0.1.0 : May 31 2012
     * First public release
 
 Flowvisor 0.8.1 : July 22 2011
