@@ -1,4 +1,8 @@
-VeRTIGO 0.3.5 : 2013-05.09 Thu Roberto Doriguzzi roberto.doriguzzi@create-net.org
+VeRTIGO 0.3.6 : 2013-06-10 Mon Roberto Doriguzzi roberto.doriguzzi@create-net.org
+  * Added support for the MODIFY flowMod command
+  * Fixed bug that prevented the correct handling of LLDP packets.
+
+VeRTIGO 0.3.5 : 2013-05-09 Thu Roberto Doriguzzi roberto.doriguzzi@create-net.org
   * Fixed bug that prevented the correct installation of the entries on middlepoint 
     switches for virtual links composed of 3 or more hops
   * Added the VTLog class which enables the developer to selectively print on the stdout the debug
