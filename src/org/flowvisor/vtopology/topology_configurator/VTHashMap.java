@@ -154,8 +154,8 @@ public class VTHashMap implements Runnable {
 		Integer ret = null;
 		java.sql.Timestamp  sqlDate = new java.sql.Timestamp(new java.util.Date().getTime());
 		
-		VTLog.VTHashMap("--------------------------------------------");
-		VTLog.VTHashMap("updateFlowInfo PARAMETERS case: " + action + " linkId: " + linkId + " index: " + id + " srcMAC: " + Long.toHexString(mac2long(srcMAC)) + " dstMAC: " + Long.toHexString(mac2long(dstMAC)));
+//		VTLog.VTHashMap("--------------------------------------------");
+//		VTLog.VTHashMap("updateFlowInfo PARAMETERS case: " + action + " linkId: " + linkId + " index: " + id + " srcMAC: " + Long.toHexString(mac2long(srcMAC)) + " dstMAC: " + Long.toHexString(mac2long(dstMAC)));
 			
 		if(action == FLOWINFO_ACTION.PACKETIN.ordinal()) {
 			//Switch->Controller PACKET_IN at the end of a virtual link				
@@ -247,11 +247,11 @@ public class VTHashMap implements Runnable {
 			this.MACMap.remove(id);
 			this.MACTimeMap.remove(id);
 			
-			VTLog.VTHashMap("updateFlowInfo MACMap after DELETE: " + MACMap);
-			VTLog.VTHashMap("updateFlowInfo TimeMap after DELETE: " + MACTimeMap);
+//			VTLog.VTHashMap("updateFlowInfo MACMap after DELETE: " + MACMap);
+//			VTLog.VTHashMap("updateFlowInfo TimeMap after DELETE: " + MACTimeMap);
 		}
 			
-		VTLog.VTHashMap("updateFlowInfo RETURN VALUES  srcMAC: " + Long.toHexString(mac2long(srcMAC)) + " dstMAC: " + Long.toHexString(mac2long(dstMAC)));
+//		VTLog.VTHashMap("updateFlowInfo RETURN VALUES  srcMAC: " + Long.toHexString(mac2long(srcMAC)) + " dstMAC: " + Long.toHexString(mac2long(dstMAC)));
 		return ret;
 	}
 
@@ -308,14 +308,16 @@ public class VTHashMap implements Runnable {
  * @name updateMatchTable
  * @authors roberto.doriguzzi matteo.gerola
  * @param OFMatch match, List<Object> remoteDP, flow_rem_flag, int action        
- * @return void
+ * @return boolean = true in case of successful addition/removal of the entry
  * @description modifies the content of the match table. An entry is added when a flow enters a virtual link from an endpoint. 
- * 				The entry, which contains the switchId and inPort of the remote endpoint of the virtual link, is used to recognize the 
- * 				linkId when the flow arrives to the remote endpoint 
+ * 				The entry, which contains the switchId and inPort of the remote middlepoint/endpoint of the virtual link, is used to recognize the 
+ * 				linkId when the flow arrives to the remote middlepoint/endpoint node 
  */
-	public synchronized void updateMatchTable(OFMatch match, List<Object> info, int action) {
+	public synchronized boolean updateMatchTable(OFMatch match, List<Object> info, int action) {
 		OFMatch tmpMatch = VTChangeFlowMatch.VTChangeFM(match,false);
+		VTLog.VTHashMap("updateMatchTable IN matchVlinkMap: " + matchVlinkMap);
 		if (action == ACTION.ADD.ordinal()){
+			VTLog.VTHashMap("updateMatchTable ADD switchId: " + Long.toHexString((Long)info.get(INFOINDEX.SWITCH_ID.ordinal()))  + " match: " + match);
 			HashMap<String,List<Object>> remoteLinkPoint = matchVlinkMap.get((Long)info.get(INFOINDEX.SWITCH_ID.ordinal()));
 			if(remoteLinkPoint == null) remoteLinkPoint = new HashMap<String,List<Object>>();
 			LinkedList<Object> tmpList = new LinkedList<Object>();
@@ -325,8 +327,11 @@ public class VTHashMap implements Runnable {
 			tmpList.add(INFOINDEX.VIRT_PORT.ordinal(),(Integer) info.get(INFOINDEX.VIRT_PORT.ordinal()));
 			remoteLinkPoint.put(tmpMatch.toString(), tmpList);
 			matchVlinkMap.put((Long)info.get(0), remoteLinkPoint);  //saving the current switchId with the info of the remote endpoint 
+			VTLog.VTHashMap("updateMatchTable ADD OUT matchVlinkMap: " + matchVlinkMap);
+			return true;
 		} 
 		else if (action == ACTION.DELETE.ordinal()){
+			VTLog.VTHashMap("updateMatchTable DELETE switchId: " + Long.toHexString((Long)info.get(INFOINDEX.SWITCH_ID.ordinal()))  + " match: " + match);
 			HashMap<String,List<Object>> remoteLinkPoint = matchVlinkMap.get((Long)info.get(INFOINDEX.SWITCH_ID.ordinal()));
 			if(remoteLinkPoint != null){
 				List<Object> tmpList = remoteLinkPoint.get(tmpMatch.toString());
@@ -334,15 +339,13 @@ public class VTHashMap implements Runnable {
 					if(info.get(INFOINDEX.LINK_ID.ordinal()) == tmpList.get(INFOINDEX.LINK_ID.ordinal())) {
 						remoteLinkPoint.remove(tmpMatch.toString());
 						if(remoteLinkPoint.size() == 0) matchVlinkMap.remove((Long)info.get(INFOINDEX.SWITCH_ID.ordinal()));	
-						VTLog.VTHashMap("updateMatchTable DELETE matchVlinkMap: " + matchVlinkMap);
+						VTLog.VTHashMap("updateMatchTable DELETE OUT matchVlinkMap: " + matchVlinkMap);
+						return true;
 					}
 				}
 			}
-			
 		} 
-		else if (action == ACTION.MODIFY.ordinal()){
-			
-		}
+		return false;
 	}	
 
 /**
@@ -431,7 +434,7 @@ public class VTHashMap implements Runnable {
 		OFMatch match = flowMod.getMatch().clone();	
 		
 		VTLog.VTHashMap("--------------------------------------------");
-		VTLog.VTHashMap("ManageMiddlePointEntries from switch: " + switchId + " flowMod match: " + match);
+		VTLog.VTHashMap("ManageMiddlePointEntries from switch: " + Long.toHexString(switchId) + " flowMod match: " + match);
 		
 		int max_loops = MiddlePointList.size();
 		int entries_to_send = MiddlePointList.size();
@@ -452,7 +455,8 @@ public class VTHashMap implements Runnable {
 					tmpMiddlePoint.add(linkId);
 					tmpMiddlePoint.add(inPort);
 					tmpMiddlePoint.add(0);
-					if(flowMod.getCommand() == FVFlowMod.OFPFC_ADD) this.updateMatchTable(match, tmpMiddlePoint, VTHashMap.ACTION.ADD.ordinal());
+					if(flowMod.getCommand() == FVFlowMod.OFPFC_ADD || flowMod.getCommand() == FVFlowMod.OFPFC_MODIFY || flowMod.getCommand() == FVFlowMod.OFPFC_MODIFY_STRICT) this.updateMatchTable(match, tmpMiddlePoint, VTHashMap.ACTION.ADD.ordinal());
+					else if(flowMod.getCommand() == FVFlowMod.OFPFC_DELETE || flowMod.getCommand() == FVFlowMod.OFPFC_DELETE_STRICT) this.updateMatchTable(match, tmpMiddlePoint, VTHashMap.ACTION.DELETE.ordinal());
 					
 					// looking for slicer and classifier that will be used to send the flowMod
 					FVSlicer slicer = null;

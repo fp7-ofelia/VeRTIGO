@@ -330,6 +330,8 @@ public class VTConfigInterface {
 		HashMap <Long,LinkedList<Integer>> MiddlePointList;
 		HashMap <LinkedList<Long>,Integer> HopList;
 		
+		if(linkId == 0) return false;
+		
 		try {
 			MiddlePointList = dbQuery.sqlGetLinkMiddlePoints(sliceId, linkId);
 			HopList = dbQuery.sqlGetLinkHops(sliceId, linkId); 
@@ -380,6 +382,9 @@ public class VTConfigInterface {
  */
 	public boolean saveFlowMatch(String sliceId, long switchId, OFMatch match, int linkId) {
 		List <Object> ret = null;
+		
+		if(linkId == 0) return false;
+		
 		try {
 			ret = dbQuery.sqlGetRemoteEndPoint(sliceId,switchId,linkId);
 		} catch (SQLException e) {
@@ -395,13 +400,77 @@ public class VTConfigInterface {
 		
 	}
 /**
- * @name cleanFlowMatchTable
+ * @name removeRemoteFlowMatch
  * @authors roberto.doriguzzi matteo.gerola
- * @info Removes the match entries from all middlepoints of virtual link "linkId"
+ * @info Delete the entry added to the table by with the saveFlowMatch method
+ * @param String sliceId, long switchId, OFMatch match, int linkId
+ * @return boolean = TRUE if we find the remote endpoint, FALSE otherwise 
+ */
+	public boolean removeRemoteFlowMatch(String sliceId, long switchId, OFMatch match, int linkId) {
+		List <Object> ret = null;
+		
+		if(linkId == 0) return false;
+		
+		try {
+			ret = dbQuery.sqlGetRemoteEndPoint(sliceId,switchId,linkId);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		if(ret == null) return false;
+		else {
+			vt_hashmap.updateMatchTable(match, ret, VTHashMap.ACTION.DELETE.ordinal());
+			return true;
+		}
+		
+	}
+	
+/**
+ * @name removeRemoteFlowMatch
+ * @authors roberto.doriguzzi matteo.gerola
+ * @info Modifies the flowMatchTable when the controller sends a flowMod with command==OFPFC_MODIFY or command==OFPFC_MODIFY_STRICT.
  * @param String sliceId, long switchId, OFMatch match, int linkId
  * @return void
  */
-	public void cleanFlowMatchTable(String sliceId, long switchId, OFMatch match, int linkId) {
+	public Integer removeRemoteFlowMatch(String sliceId, long switchId, OFMatch match) {
+		 
+		List <Object> ret = null;
+		LinkedList<Integer> linkIds = null;
+		
+		try {
+			linkIds = dbQuery.sqlGetVirtualLinks(sliceId, switchId);
+		} catch (SQLException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} 
+		
+		for(Integer linkId : linkIds) {
+			try {
+				ret = dbQuery.sqlGetRemoteEndPoint(sliceId,switchId,linkId);
+				VTLog.VTConfigInterface("removeRemoteFlowMatch remote endpoint: " + Long.toHexString((Long)ret.get(0)));
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		
+			if(ret != null){
+				if(vt_hashmap.updateMatchTable(match, ret, VTHashMap.ACTION.DELETE.ordinal()) == true)
+					return linkId;
+			}
+		}
+		
+		return 0;
+	}	
+	
+/**
+ * @name removeFlowMatch
+ * @authors roberto.doriguzzi matteo.gerola
+ * @info Removes the match entries with virtual link "linkId" from the flowMatchTable 
+ * @param String sliceId, long switchId, OFMatch match, int linkId
+ * @return void
+ */
+	public void removeFlowMatch(String sliceId, long switchId, OFMatch match, int linkId) {
 		 
 		 // deleting the entries for the switch which sent the flow removed message
 		 List<Object> info = new LinkedList<Object>();
@@ -409,6 +478,7 @@ public class VTConfigInterface {
 		 info.add((Object)Integer.valueOf(linkId)); //linkId
 		 vt_hashmap.updateMatchTable(match, info, VTHashMap.ACTION.DELETE.ordinal());
 	}
+
 
 			
 	public boolean ManageVLinkLLDP(String sliceId, long switchId, Integer virtPortId, byte[] bs) {

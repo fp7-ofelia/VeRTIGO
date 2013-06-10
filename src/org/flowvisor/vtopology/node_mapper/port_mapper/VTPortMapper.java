@@ -89,12 +89,10 @@ OFPP_NONE: -1
 
 public class VTPortMapper {
 	private OFMessage msg;
-	public boolean end_point; //used by the FVSlicer to decide whether call the LinkBroker (end_point==false)
 	private VTConfigInterface vt_config;
 
 	public VTPortMapper(OFMessage m, VTConfigInterface config) {
 		this.msg = m;
-		end_point = true;
 		vt_config = config;
 	}
 
@@ -142,8 +140,6 @@ public class VTPortMapper {
 			HashMap<Integer,LinkedList<Integer>> phyToVirtPortMap = vt_config.GetPhyToVirtMap(sliceName,switchId);
 			
 			if(phyToVirtPortMap != null) {
-				end_point = true;  // features replies are always sent to the controller 
-	
 				// port mapping
 				for (OFPhysicalPort inPort: inPortList){
 					Integer inPort_nr = Integer.valueOf((int)inPort.getPortNumber());
@@ -164,8 +160,10 @@ public class VTPortMapper {
 			FVPacketIn packetIn = (FVPacketIn) this.msg;
 			VTLog.VTPortMapper("PACKET_IN IN sliceName: "  + sliceName);
 			VTLog.VTPortMapper("PACKET_IN IN inPort: " + packetIn.getInPort() + " bufferid: " + packetIn.getBufferId());
-					
-			if(LLDPUtil.LLDPCheck(packetIn.getPacketData())) { // LLDP packet
+				
+			// LLDP packet_in are sent to the controllers "as is"
+			if(LLDPUtil.LLDPCheck(packetIn.getPacketData())) { 
+				VTLog.VTPortMapper("PACKET_IN LLDP switchId: " + switchId);
 				return 1;
 			}
 
@@ -173,10 +171,10 @@ public class VTPortMapper {
 			match.loadFromPacket(packetIn.getPacketData(), packetIn.getInPort());
 			VTLog.VTPortMapper("PACKET_IN IN switchId: "  + Long.toHexString(switchId) + " match: " + match.toString());
 			int linkId = vt_config.vt_hashmap.getLinkId(switchId, match, packetIn.getInPort());
-			this.end_point = vt_config.GetEndPoint(sliceName,switchId,linkId);
+			boolean end_point = vt_config.GetEndPoint(sliceName,switchId,linkId);
 			VTLog.VTPortMapper("PACKET_IN IN linkId: " + linkId);
 			
-			if(!this.end_point) {// middlepoint switch: installing permanent entries for this specific virtual link
+			if(!end_point) {// middlepoint switch: installing permanent entries for this specific virtual link
 				vt_config.InstallStaticMiddlePointEntries(sliceName, slicer, switchInfo, Integer.valueOf(linkId), packetIn.getInPort(), packetIn.getBufferId());				
 				ret = 0;
 			} else { //end point switch: remapping and forwarding
@@ -213,9 +211,9 @@ public class VTPortMapper {
 			VTLog.VTPortMapper("FLOW_REMOVED IN switchId: "  + Long.toHexString(switchId) + " flowRem: " + flowRem);
 			// checking endpoint
 	        int linkId = vt_config.vt_hashmap.getLinkId(switchId, match, match.getInputPort());
-	        this.end_point = vt_config.GetEndPoint(sliceName,switchId,linkId);
+	        boolean end_point = vt_config.GetEndPoint(sliceName,switchId,linkId);
 	        VTLog.VTPortMapper("FLOW_REMOVED linkId: " + linkId);
-	        if(linkId > 0) vt_config.cleanFlowMatchTable(sliceName, switchId, match, linkId);
+	        if(linkId > 0) vt_config.removeFlowMatch(sliceName, switchId, match, linkId);
 
 			// port remapping
 			if(!end_point) ret = 0;
@@ -226,9 +224,9 @@ public class VTPortMapper {
 						match.setInputPort(virtPortId.shortValue());
 					}
 				}
+				ret = 1;
 			}
 			VTLog.VTPortMapper("FLOW_REMOVED OUT switchId: "  + Long.toHexString(switchId) + " flowRem: " + flowRem);
-			ret = 1;
 		}
 		else if (this.msg.getType() == OFType.STATS_REPLY) {
 			FVStatisticsReply statsRep = (FVStatisticsReply) this.msg;
@@ -239,7 +237,6 @@ public class VTPortMapper {
 			int statsLen = 0;
 			// getting the port mapping
 			HashMap<Integer,LinkedList<Integer>> phyToVirtPortMap = vt_config.GetPhyToVirtMap(sliceName, switchId);
-			end_point = true; //stat replies are always sent to the controller since they are answers to stat requests
 			
 			if (statsType == OFStatisticsType.FLOW.getTypeValue()) { //match field contains the in_port
 				List<OFStatistics> inStatsList = statsRep.getStatistics();
@@ -440,8 +437,8 @@ public class VTPortMapper {
 
 		if (this.msg.getType() == OFType.PACKET_OUT) {
 			FVPacketOut packetOut = (FVPacketOut) this.msg;
-			VTLog.VTPortMapper("--------------------------------------------");
-			VTLog.VTPortMapper("PACKET_OUT IN switchId: " + Long.toHexString(switchId) + " " + packetOut.toString());
+//			VTLog.VTPortMapper("--------------------------------------------");
+//			VTLog.VTPortMapper("PACKET_OUT IN switchId: " + Long.toHexString(switchId) + " " + packetOut.toString());
 			
 			if(packetOut.getInPort() == OFPort.OFPP_CONTROLLER.getValue() || packetOut.getInPort() == OFPort.OFPP_NONE.getValue()){
 				// workaround for LLDP messages on Virtual Links			
@@ -511,7 +508,7 @@ public class VTPortMapper {
 									byte [] srcMAC = new byte[6];
 									byte [] dstMAC = new byte[6];
 									Integer linkId = OutPortMap.get(1);
-									VTLog.VTPortMapper("Index: " + index + " linkId: " + linkId + " inVirtPort: " + VirtInPort + " outPhyPort: " + OutPortMap.get(0));
+//									VTLog.VTPortMapper("Index: " + index + " linkId: " + linkId + " inVirtPort: " + VirtInPort + " outPhyPort: " + OutPortMap.get(0));
 									index = vt_config.vt_hashmap.updateFlowInfo(packetOut.getBufferId(),srcMAC, dstMAC,linkId,VTHashMap.FLOWINFO_ACTION.PACKETOUT.ordinal());
 									// we change the MACs only if flow is entering (linkId>0) or exiting virtual links
 									if(index != null && (linkId > 0 || VirtInPort >= VTConfigInterface.baseVirtPortNumber)) { 
@@ -562,12 +559,12 @@ public class VTPortMapper {
 		        List<Integer> stored_bufferId = vt_config.bufferIdMap.get(packetOut.getBufferId());
 		        if(stored_bufferId != null)
 		        {
-		        	VTLog.VTPortMapper("PACKET_OUT:  removed item vt_config.bufferIdMap " +  vt_config.bufferIdMap.get(packetOut.getBufferId()));
+//		        	VTLog.VTPortMapper("PACKET_OUT:  removed item vt_config.bufferIdMap " +  vt_config.bufferIdMap.get(packetOut.getBufferId()));
 			        packetOut.setBufferId(stored_bufferId.get(0)); //restoring the saved buffer_id
 			        vt_config.bufferIdMap.remove(packetOut.getBufferId());
-			        VTLog.VTPortMapper("PACKET_OUT:  vt_config.bufferIdMap" +  vt_config.bufferIdMap);
+//			        VTLog.VTPortMapper("PACKET_OUT:  vt_config.bufferIdMap" +  vt_config.bufferIdMap);
 		        }
-		        VTLog.VTPortMapper("PACKET_OUT OUT switchId: " + Long.toHexString(switchId) + " " + packetOut.toString());
+//		        VTLog.VTPortMapper("PACKET_OUT OUT switchId: " + Long.toHexString(switchId) + " " + packetOut.toString());
 			} else return false;
 		}
 		else if (this.msg.getType() == OFType.FLOW_MOD) {
@@ -581,6 +578,8 @@ public class VTPortMapper {
 			VTLog.VTPortMapper("FLOW_MOD IN switchId1: " + Long.toHexString(switchId) + " " + flowMod.toString());
 //			VTLog.VTPortMapper("FLOW_MOD IN inPort wildcard: " + ((match.getWildcards() & OFMatch.OFPFW_IN_PORT)));
 //			VTLog.VTPortMapper("FLOW_MOD IN flags: " + flowMod.getFlags());
+			
+			
 			
 			if(vt_config.bufferIdMap.get(flowMod.getBufferId()) != null) {
 				// if the flow left a virtual link with tagged MACs, we need to restore the original MAC addresses
@@ -616,95 +615,129 @@ public class VTPortMapper {
 		        }
 
 		        // now we remap the output ports included into the actions fields
-		        ArrayList<OFAction> inActions = (ArrayList<OFAction>) flowMod.getActions();
-		        ArrayList<OFAction> outActions = new ArrayList<OFAction>();
-		        int flowMod_size = FVFlowMod.MINIMUM_LENGTH;
-		        for(OFAction action: inActions){ //also ports in the actions must be remapped
-		        	if (action.getType().equals(OFActionType.OUTPUT)){
-		        		FVActionOutput actionOut = (FVActionOutput)action;
-//		        		System.out.println("FLOW_MOD actionOut: " + actionOut.toString());
-		        		HashMap<Integer,LinkedList<Integer>> outPortSet = null; 
-						
-						if (U16.f(actionOut.getPort()) < U16.f(OFPort.OFPP_MAX.getValue())) { //just one port in the action
-							outPortSet = new HashMap<Integer,LinkedList<Integer>>();
-							outPortSet.put(Integer.valueOf(actionOut.getPort()), VirtPortsMappings.get(Integer.valueOf(actionOut.getPort())));
+		        ArrayList<OFAction> inActions = (ArrayList<OFAction>) flowMod.getActions();		        
+		        if(inActions.isEmpty() == true) {
+		        	// if command==OFPFC_MODIFY we don't know what was the previous output port and previous output link. 
+					// If the previuos output link was a virtual link, we have to remove the entries in the middlepoint switches
+					// of that link first. In this case there are no actions, this means that these packet will be dropped.
+					if(flowMod.getCommand() == FVFlowMod.OFPFC_MODIFY || flowMod.getCommand() == FVFlowMod.OFPFC_MODIFY_STRICT){
+						Integer oldLinkId = vt_config.removeRemoteFlowMatch(sliceName, switchId, match);
+						if(oldLinkId > 0) {
+							short origCommand = flowMod.getCommand();
+							flowMod.setCommand(FVFlowMod.OFPFC_DELETE);
+							vt_config.ManageMiddlePointEntries(sliceName, switchId, flowMod, oldLinkId);
+							flowMod.setCommand(origCommand);
 						}
-						else if (actionOut.getPort() == OFPort.OFPP_ALL.getValue() || 
-								actionOut.getPort() == OFPort.OFPP_FLOOD.getValue()) { //broadcast output action
-							outPortSet = new HashMap<Integer,LinkedList<Integer>>();
-							outPortSet.putAll(VirtPortsMappings);
-							outPortSet.remove(Integer.valueOf(VirtInPort)); //removing the virtual input port	
-						}
+					}
+		        } else {
+			        ArrayList<OFAction> outActions = new ArrayList<OFAction>();
+			        int flowMod_size = FVFlowMod.MINIMUM_LENGTH;
+			        for(OFAction action: inActions){ //also ports in the actions must be remapped
+			        	if (action.getType().equals(OFActionType.OUTPUT)){
+			        		FVActionOutput actionOut = (FVActionOutput)action;
+			        		HashMap<Integer,LinkedList<Integer>> outPortSet = null; 
 							
-						if(outPortSet != null){
-							for (Entry<Integer,LinkedList<Integer>> outPort: outPortSet.entrySet()){
-								LinkedList<Integer> OutPortMap = outPort.getValue();
-								if(OutPortMap != null) {
-									boolean changeMAC = false;
-									// here we send the actions to restore the MACs when the flow is tagged 
-									if(restoreMAC && flowMod.getCommand() == FVFlowMod.OFPFC_ADD) {		
-										changeMAC = true;
-										FVActionDataLayerSource FVsrcMACaction = new FVActionDataLayerSource();
-										FVsrcMACaction.setType(OFActionType.SET_DL_SRC);
-										FVsrcMACaction.setDataLayerAddress(match.getDataLayerSource());									
-										FVActionDataLayerDestination FVdstMACaction = new FVActionDataLayerDestination();
-										FVdstMACaction.setDataLayerAddress(match.getDataLayerDestination());
+							if (U16.f(actionOut.getPort()) < U16.f(OFPort.OFPP_MAX.getValue())) { //just one port in the action
+								outPortSet = new HashMap<Integer,LinkedList<Integer>>();
+								outPortSet.put(Integer.valueOf(actionOut.getPort()), VirtPortsMappings.get(Integer.valueOf(actionOut.getPort())));
+							}
+							else if (actionOut.getPort() == OFPort.OFPP_ALL.getValue() || 
+									actionOut.getPort() == OFPort.OFPP_FLOOD.getValue()) { //broadcast output action
+								outPortSet = new HashMap<Integer,LinkedList<Integer>>();
+								outPortSet.putAll(VirtPortsMappings);
+								outPortSet.remove(Integer.valueOf(VirtInPort)); //removing the virtual input port	
+							}
+								
+							if(outPortSet != null){
+								for (Entry<Integer,LinkedList<Integer>> outPort: outPortSet.entrySet()){
+									LinkedList<Integer> OutPortMap = outPort.getValue();
+									if(OutPortMap != null) {
+										boolean changeMAC = false;
+										// here we send the actions to restore the MACs when the flow is tagged 
+										if(restoreMAC && flowMod.getCommand() == FVFlowMod.OFPFC_ADD) {		
+											changeMAC = true;
+											FVActionDataLayerSource FVsrcMACaction = new FVActionDataLayerSource();
+											FVsrcMACaction.setType(OFActionType.SET_DL_SRC);
+											FVsrcMACaction.setDataLayerAddress(match.getDataLayerSource());									
+											FVActionDataLayerDestination FVdstMACaction = new FVActionDataLayerDestination();
+											FVdstMACaction.setDataLayerAddress(match.getDataLayerDestination());
+											
+											try {
+												outActions.add(FVsrcMACaction.clone());
+												flowMod_size += FVsrcMACaction.getLengthU();
+												outActions.add(FVdstMACaction.clone());
+												flowMod_size += FVdstMACaction.getLengthU();
+											} catch (CloneNotSupportedException e) {
+												e.printStackTrace();
+											}					
+										}
 										
+										Integer linkId = OutPortMap.get(1);
+										
+										// if command==OFPFC_MODIFY we don't know what was the previous output port and previous output link. 
+										// If the previuos output link was a virtual link, we have to remove the entries in the middlepoint switches
+										// of that link first. The new entries are added below.
+										if(flowMod.getCommand() == FVFlowMod.OFPFC_MODIFY || flowMod.getCommand() == FVFlowMod.OFPFC_MODIFY_STRICT){
+											Integer oldLinkId = vt_config.removeRemoteFlowMatch(sliceName, switchId, match);
+											if(oldLinkId > 0) {
+												short origCommand = flowMod.getCommand();
+												flowMod.setCommand(FVFlowMod.OFPFC_DELETE);
+												vt_config.ManageMiddlePointEntries(sliceName, switchId, flowMod, oldLinkId);
+												flowMod.setCommand(origCommand);
+											}
+										}
+										
+										if(linkId > 0) {
+											// here we remove the entries from the flowMatchTable and from middlepoint switches.
+											if(flowMod.getCommand() == FVFlowMod.OFPFC_DELETE || flowMod.getCommand() == FVFlowMod.OFPFC_DELETE_STRICT){
+												vt_config.removeRemoteFlowMatch(sliceName, switchId, match, linkId);
+												vt_config.ManageMiddlePointEntries(sliceName, switchId, flowMod, linkId);
+											}
+										 // here we add the match to the table and we install the rules to the middlepoint switches
+											if(flowMod.getCommand() == FVFlowMod.OFPFC_ADD || 
+											   flowMod.getCommand() == FVFlowMod.OFPFC_MODIFY || flowMod.getCommand() == FVFlowMod.OFPFC_MODIFY_STRICT){
+												vt_config.saveFlowMatch(sliceName, switchId, match, linkId);
+												vt_config.ManageMiddlePointEntries(sliceName, switchId, flowMod, linkId);
+											}
+										}
+										
+										
+										//comparing the output phy port with the input phy port set above
+										if(OutPortMap.get(0)== match.getInputPort() && ((match.getWildcards() & OFMatch.OFPFW_IN_PORT) == 0 )){ 
+											actionOut.setPort((short) OFPort.OFPP_IN_PORT.getValue());
+										}
+										else{
+											actionOut.setPort(OutPortMap.get(0).shortValue());
+										}
+										
+				
 										try {
-											outActions.add(FVsrcMACaction.clone());
-											flowMod_size += FVsrcMACaction.getLengthU();
-											outActions.add(FVdstMACaction.clone());
-											flowMod_size += FVdstMACaction.getLengthU();
+											// output actions that not need MAC rewriting go at the beginning of the list
+											if(changeMAC == true) outActions.add(actionOut.clone());
+											else outActions.add(0,actionOut.clone()); 
+											flowMod_size += actionOut.getLengthU();
 										} catch (CloneNotSupportedException e) {
 											e.printStackTrace();
-										}					
-									}
-									
-									Integer linkId = OutPortMap.get(1);
-									if(linkId > 0) { // we save only flows entering vlinks
-										if(flowMod.getCommand() == FVFlowMod.OFPFC_ADD){
-											vt_config.saveFlowMatch(sliceName, switchId, match, linkId);
 										}
-										else if(flowMod.getCommand() == FVFlowMod.OFPFC_DELETE || flowMod.getCommand() == FVFlowMod.OFPFC_DELETE_STRICT){
-											vt_config.cleanFlowMatchTable(sliceName, switchId, match, linkId);
-										}
-										vt_config.ManageMiddlePointEntries(sliceName, switchId, flowMod, linkId);
-									}
-									
-									//comparing the output phy port with the input phy port set above
-									if(OutPortMap.get(0)== match.getInputPort() && ((match.getWildcards() & OFMatch.OFPFW_IN_PORT) == 0 )){ 
-										actionOut.setPort((short) OFPort.OFPP_IN_PORT.getValue());
-									}
-									else{
-										actionOut.setPort(OutPortMap.get(0).shortValue());
-									}
-									
-			
-									try {
-										// output actions that not need MAC rewriting go at the beginning of the list
-										if(changeMAC == true) outActions.add(actionOut.clone());
-										else outActions.add(0,actionOut.clone()); 
-										flowMod_size += actionOut.getLengthU();
-									} catch (CloneNotSupportedException e) {
-										e.printStackTrace();
-									}
-								}							
+									}							
+								}
+			        		}
+							else{
+								outActions.add(action);
+								flowMod_size += action.getLengthU();
 							}
-		        		}
+						}
 						else{
 							outActions.add(action);
 							flowMod_size += action.getLengthU();
 						}
+						
 					}
-					else{
-						outActions.add(action);
-						flowMod_size += action.getLengthU();
-					}
-					
-				}
-		        flowMod.setActions(outActions);
-		        flowMod.setLengthU(flowMod_size);
-
+			        flowMod.setActions(outActions);
+			        flowMod.setLengthU(flowMod_size);
+		        }
+		        
+		        
 		        // we always need the FLOW_REMOVED messages from switches
 		        if(flowMod.getCommand() == FVFlowMod.OFPFC_ADD || flowMod.getCommand() == FVFlowMod.OFPFC_MODIFY) flowMod.setFlags((short)(flowMod.getFlags() | ((short) (1 << 0))));
 

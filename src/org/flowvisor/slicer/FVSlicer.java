@@ -279,31 +279,24 @@ public class FVSlicer implements FVEventHandler, FVSendMsg {
 			// VERTIGO
 			if(this.sliceName != "fvadmin" && from.equals(this.fvClassifier)){ // do not process flows that belong to the "fvadmin" slice
 				VTPortMapper port_mapper = new VTPortMapper(msg,vt_config);
-					
+				System.out.println("Slicer this.sliceName: " + this.sliceName);	
 				if(port_mapper.UpLinkMapping(this, this.sliceName, (FVClassifier)from) > 0)
 				{
-					if(port_mapper.end_point) { //sending the message to the controller
-						FVLog.log(LogLevel.DEBUG, this, "send to controller: ", msg);
-						try {
-							this.msgStream.testAndWrite(msg);
-						} catch (BufferFull e) {
-							FVLog.log(LogLevel.CRIT, this,
-									"buffer full: tearing down: got ", e,
-									": resetting connection");
-							this.reconnectLater();
-						} catch (MalformedOFMessage e) {
-							this.stats.increment(FVStatsType.DROP, from, msg);
-							FVLog.log(LogLevel.CRIT, this, "BUG: ", e);
-						} catch (IOException e) {
-							FVLog.log(LogLevel.WARN, this, "reconnection; got IO error: ",
-									e);
-							this.reconnectLater();
-						}
-					}else { // the switch is a middlepoint => the switch is controlled directly by VeRTIGO 
-						    // therefore this message is not forwarded to the controller
-						
-						this.dropMsg(msg, from);
-						return;
+					FVLog.log(LogLevel.DEBUG, this, "send to controller: ", msg);
+					try {
+						this.msgStream.testAndWrite(msg);
+					} catch (BufferFull e) {
+						FVLog.log(LogLevel.CRIT, this,
+								"buffer full: tearing down: got ", e,
+								": resetting connection");
+						this.reconnectLater();
+					} catch (MalformedOFMessage e) {
+						this.stats.increment(FVStatsType.DROP, from, msg);
+						FVLog.log(LogLevel.CRIT, this, "BUG: ", e);
+					} catch (IOException e) {
+						FVLog.log(LogLevel.WARN, this, "reconnection; got IO error: ",
+								e);
+						this.reconnectLater();
 					}
 				}
 				else {

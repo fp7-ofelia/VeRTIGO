@@ -88,6 +88,7 @@ public class VTSqlDb {
 		PreparedStatement selectSwitchTableEightteen;
 		PreparedStatement selectSwitchTableNineteen;
 		PreparedStatement selectSwitchTableTwenty;
+		PreparedStatement selectSwitchTableTwentyOne;
 		PreparedStatement deleteSwitchTableOne;
 		PreparedStatement deleteSwitchTableTwo;
 		PreparedStatement updateSwitchTable;
@@ -355,6 +356,9 @@ public class VTSqlDb {
 		
 		statements.selectSwitchTableTwenty = conn.prepareStatement("SELECT virtPortId FROM switchTable " +
 				"WHERE sliceId = ? and switchId = ? and linkId = ? and endPoint = true LIMIT 1"); 
+		
+		statements.selectSwitchTableTwentyOne = conn.prepareStatement("SELECT linkId FROM switchTable " +
+				"WHERE sliceId = ? and switchId = ? and endPoint = true"); 
 		
 		statements.updateSwitchTable = conn.prepareStatement("UPDATE switchTable SET status = ? " +
 				"WHERE sliceId = ? and switchId = ? and linkId = ? and virtPortId = ?"); 
@@ -1288,6 +1292,31 @@ public class VTSqlDb {
 		ResultSet rs = statements.selectSwitchTableTwo.executeQuery();
 		while (rs.next()) {
 			ret = rs.getBoolean("endPoint");
+		}
+		rs.close ();
+		
+		return ret;
+	}
+/**
+ * @name sqlGetVirtualLinks
+ * @authors roberto.doriguzzi matteo.gerola
+ * @info This function return a list containing all the virtual links connected to the switch
+ * @param String sliceId = name of the slice
+ * @param long switchId = dpid of the source switch
+ * @return LinkedList<Integer> = the list of links identifiers
+ * @exception SQLException
+ */
+	public LinkedList<Integer> sqlGetVirtualLinks(String sliceId, long switchId) 
+	throws SQLException {
+		LinkedList<Integer> ret = new LinkedList<Integer>();
+		
+		statements.selectSwitchTableTwentyOne.setString(1, sliceId);
+		statements.selectSwitchTableTwentyOne.setLong(2, switchId);
+		ResultSet rs = statements.selectSwitchTableTwentyOne.executeQuery();
+		
+		while (rs.next()) {
+			Integer linkId = rs.getInt("linkId");
+			if(linkId > 0) ret.add(linkId);
 		}
 		rs.close ();
 		

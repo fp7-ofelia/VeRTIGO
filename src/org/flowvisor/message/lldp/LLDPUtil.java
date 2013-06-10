@@ -116,14 +116,12 @@ public class LLDPUtil {
 		else
 			FVLog.log(LogLevel.DEBUG, fvClassifier,
 					"broadcasting b.c no lldp trailer found");
-// VERTIGO: we don't want unrequested LLDP messages
-//		short inport = pi.getInPort();
-//		pi.setXid(0xdeaddead); // mark this as broadcasted
-//		for (FVSlicer fvSlicer : fvClassifier.getSlicers()) {
-//			if (fvSlicer.portInSlice(inport) && fvSlicer.isConnected())
-//				fvSlicer.sendMsg(pi, fvClassifier);
-//		}
-// END VERTIGO
+		short inport = pi.getInPort();
+		pi.setXid(0xdeaddead); // mark this as broadcasted
+		for (FVSlicer fvSlicer : fvClassifier.getSlicers()) {
+			if (fvSlicer.portInSlice(inport) && fvSlicer.isConnected())
+				fvSlicer.sendMsg(pi, fvClassifier);
+		}
 		return true;
 	}
 }
