@@ -210,9 +210,9 @@ $install $verbose --owner=$binuser --group=$bingroup --mode=644 vertigo.jar  $ro
 echo Installing manpages
 cd $owd
 cd doc
-$install $verbose --owner=$binuser --group=$bingroup --mode=644 fvctl.1  $root$prefix/share/man/man1
-$install $verbose --owner=$binuser --group=$bingroup --mode=644 fvconfig.1  $root$prefix/share/man/man1
-$install $verbose --owner=$binuser --group=$bingroup --mode=644 flowvisor.8  $root$prefix/share/man/man8
+$install $verbose --owner=$binuser --group=$bingroup --mode=644 vectl.1  $root$prefix/share/man/man1
+$install $verbose --owner=$binuser --group=$bingroup --mode=644 veconfig.1  $root$prefix/share/man/man1
+$install $verbose --owner=$binuser --group=$bingroup --mode=644 vertigo.8  $root$prefix/share/man/man8
 # do we need to run makewhatis manually here? I think it's a cronjob on most systems
 
 

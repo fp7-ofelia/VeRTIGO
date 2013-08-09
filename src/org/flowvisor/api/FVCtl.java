@@ -15,6 +15,7 @@ import java.net.URL;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -32,13 +33,13 @@ import javax.net.ssl.X509TrustManager;
 import org.apache.xmlrpc.XmlRpcException;
 import org.apache.xmlrpc.client.XmlRpcClient;
 import org.apache.xmlrpc.client.XmlRpcClientConfigImpl;
-
 import org.flowvisor.api.FlowChange.FlowChangeOp;
 import org.flowvisor.config.BracketParse;
 import org.flowvisor.config.FVConfig;
 import org.flowvisor.exceptions.MalformedFlowChange;
 import org.flowvisor.exceptions.MapUnparsable;
 import org.flowvisor.flows.FlowDBEntry;
+import org.flowvisor.vtopology.vtstatistics.VTStatsUtils;
 import org.openflow.protocol.statistics.OFStatistics;
 
 
@@ -451,10 +452,11 @@ public class FVCtl {
 			System.err.println("Got 'null' for reply :-(");
 			System.exit(-1);
 		}
-		else {
-			for (int i = 0; i < reply.length; i++) {
-				System.out.println((String) reply[i]);
-			}
+		else if (reply.length > 0){
+			String [] reply_timers = ((String)reply[0]).split(",");
+			System.out.println("\nVTPlanner Statistics Timers (s=seconds, m=minutes, h=hours, d=days, w=weeks)");
+			System.out.println("\nSampling period: " + reply_timers[0]);
+			System.out.println("Expiration time: " + reply_timers[1]);
 			System.out.println("success!");
 		}
 	}
@@ -473,8 +475,22 @@ public class FVCtl {
 			System.exit(-1);
 		}
 		else {
+			System.out.println("\nSWITCH_ID: " + switchId + " PORT_NUMBER: " + port + "\n");
+			System.out.println("TIME\t\t\t\t\tBYTES_RX\t\tBYTES_TX\t\tPACKETS_RX\t\tPACKETS_TX");
+			
 			for (int i = 0; i < reply.length; i++) {
-				System.out.println((String) reply[i]);
+				String reply_str = reply[i].toString();
+				String [] reply_str_items = reply_str.split(",");
+				String new_reply_str = new String();
+				if(reply_str_items.length == 5) { // date, rxBytes, txBytes, rxPackets, txPackets 
+					Date date = new Date(Long.parseLong(reply_str_items[0]));
+					new_reply_str += date.toString() + "\t\t";
+					new_reply_str += String.format("%010d",Long.parseLong(reply_str_items[1])) + "\t\t";
+					new_reply_str += String.format("%010d",Long.parseLong(reply_str_items[2])) + "\t\t";
+					new_reply_str += String.format("%010d",Long.parseLong(reply_str_items[3])) + "\t\t";
+					new_reply_str += String.format("%010d",Long.parseLong(reply_str_items[4]));
+				}
+				System.out.println(new_reply_str);
 			}
 			System.out.println("success!");
 		}
@@ -494,8 +510,21 @@ public class FVCtl {
 			System.exit(-1);
 		}
 		else {
+			System.out.println("\nSWITCH_ID: " + switchId + " PORT_NUMBER: " + port + " QUEUE_ID: " + queue + "\n");
+			System.out.println("TIME\t\t\t\t\tBYTES_TX\t\tPACKETS_TX\t\tERRORS_TX");
+			
 			for (int i = 0; i < reply.length; i++) {
-				System.out.println((String) reply[i]);
+				String reply_str = reply[i].toString();
+				String [] reply_str_items = reply_str.split(",");
+				String new_reply_str = new String();
+				if(reply_str_items.length == 4) { // date, txBytes, txPackets, txErrors 
+					Date date = new Date(Long.parseLong(reply_str_items[0]));
+					new_reply_str += date.toString() + "\t\t";
+					new_reply_str += String.format("%010d",Long.parseLong(reply_str_items[1])) + "\t\t";
+					new_reply_str += String.format("%010d",Long.parseLong(reply_str_items[2])) + "\t\t";
+					new_reply_str += String.format("%010d",Long.parseLong(reply_str_items[3]));
+				}
+				System.out.println(new_reply_str);
 			}
 			System.out.println("success!");
 		}
@@ -515,8 +544,11 @@ public class FVCtl {
 			System.exit(-1);
 		}
 		else {
+			System.out.println("\nSWITCH_ID: " + switchId + " PORT NUMBER: " + port + "\n");
+			System.out.println("PORT\t\tCONFIG\t\tFEATURES\tSTATE");
 			for (int i = 0; i < reply.length; i++) {
-				System.out.println((String) reply[i]);
+				String tmp = reply[i].toString();
+				System.out.println(tmp.replace(",","\t\t"));
 			}
 			System.out.println("success!");
 		}
@@ -536,8 +568,30 @@ public class FVCtl {
 			System.exit(-1);
 		}
 		else {
+			int maxLength = 0;
 			for (int i = 0; i < reply.length; i++) {
-				System.out.println((String) reply[i]);
+				String reply_str = reply[i].toString();
+				for(String tmp_str : reply_str.split(",,")) {
+					if(tmp_str.length() > maxLength) maxLength = tmp_str.length();
+				}
+			}
+			maxLength+=2;
+			
+			System.out.println("\nDATAPATH_ID" + VTStatsUtils.fillString(' ', maxLength-String.format("DATAPATH_ID").length()) + 
+			   "DPATH_DESCRIPTION" + VTStatsUtils.fillString(' ', maxLength-String.format("DPATH_DESCRIPTION").length()) +
+			   "MANUFACTURER" + VTStatsUtils.fillString(' ', maxLength-String.format("MANUFACTURER").length()) + 
+			   "SERIAL_NUMBER" + VTStatsUtils.fillString(' ', maxLength-String.format("SERIAL_NUMBER").length()) + 
+			   "CAPABILITIES" + VTStatsUtils.fillString(' ', maxLength-String.format("CAPABILITIES").length()) + 
+			   "OF_VERSION" + VTStatsUtils.fillString(' ', maxLength-String.format("OF_VERSION").length()) + 
+			   "PORTS\n");
+			
+			for (int i = 0; i < reply.length; i++) {
+				String reply_str = reply[i].toString();
+				String new_str = "";
+				for(String tmp_str : reply_str.split(",,")) {
+					new_str += tmp_str + VTStatsUtils.fillString(' ', maxLength-tmp_str.length());
+				}			
+				System.out.println(new_str);
 			}
 			System.out.println("success!");
 		}

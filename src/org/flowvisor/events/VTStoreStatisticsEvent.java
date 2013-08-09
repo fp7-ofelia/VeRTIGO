@@ -82,7 +82,7 @@ public class VTStoreStatisticsEvent extends FVTimerEvent {
 		// port statistics
 		sendPortStatsRequest();
 		// queue statistics
-		//sendQueueStatsRequest();		
+		sendQueueStatsRequest();		
 		
 	}
 	
@@ -256,11 +256,9 @@ public class VTStoreStatisticsEvent extends FVTimerEvent {
 		List<OFStatistics> inStatsList = msg.getStatistics();
 		
 		for (OFStatistics ofStats : inStatsList){
-			//OFQueueStatisticsReply queueStats = (OFQueueStatisticsReply) ofStats;			
-			OFPortStatisticsReply portStats = (OFPortStatisticsReply) ofStats;
+			OFQueueStatisticsReply queueStats = (OFQueueStatisticsReply) ofStats;			
 			try {
-				statsDb.sqlDbInsertQueueStats(sw.getDatapathId(), portStats.getPortNumber(), (int)(portStats.getTransmitBytes()%10), portStats.getTransmitBytes(), portStats.getTransmitPackets(),portStats.getTransmitErrors());
-				//statsDb.sqlDbInsertQueueStats(sw.getDatapathId(), queueStats.getPortNumber(), queueStats.getQueueId(), queueStats.getTransmitBytes(), queueStats.getTransmitPackets(),queueStats.getTransmitErrors());
+				statsDb.sqlDbInsertQueueStats(sw.getDatapathId(), queueStats.getPortNumber(), queueStats.getQueueId(), queueStats.getTransmitBytes(), queueStats.getTransmitPackets(),queueStats.getTransmitErrors());
 			} catch (SQLException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();

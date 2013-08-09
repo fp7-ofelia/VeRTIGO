@@ -78,7 +78,7 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 	 */
 	public String ping(String arg) {
 		String user = APIUserCred.getUserName();
-		return "PONG(" + user + "): FV version=" + VeRTIGO.FLOWVISOR_VERSION
+		return "PONG(" + user + "): VeRTIGO version=" + VeRTIGO.VERTIGO_VERSION
 				+ "::" + arg;
 	}
 
@@ -924,15 +924,15 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 	throws PermissionDeniedException{
 		List<String> statsRecord = new LinkedList<String>();
 		
-		statsRecord.add("\nVTPlanner Statistics Timers (s=seconds, m=minutes, h=hours, d=days, w=weeks)");
-		
 		try {
-			statsRecord.add("\nSampling period: " + FVConfig.getString(FVConfig.VTPLANNER_STATS_TIMER));
-			statsRecord.add("Expiration time: " + FVConfig.getString(FVConfig.VTPLANNER_STATS_EXPIR));
+			statsRecord.add(FVConfig.getString(FVConfig.VTPLANNER_STATS_TIMER) + "," + FVConfig.getString(FVConfig.VTPLANNER_STATS_EXPIR));
 		} catch (ConfigError e) {
-			return null;
 		}
 		
+		if(statsRecord.isEmpty()){
+			// The two timers have not been set yes, we return the default values
+			statsRecord.add("60s,24h");
+		}
 		return statsRecord;
 	}
 	
@@ -946,21 +946,14 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 	@Override
 	public Collection<String> getVTPlannerPortStats(String switchId, String port, String datetime1, String datetime2) 
 	throws RuntimeException, ConfigError {
-		List<String> statsRecord = new LinkedList<String>();
-		
-		statsRecord.add("\nSWITCH_ID: " + switchId + " PORT_NUMBER: " + port + "\n");
-		statsRecord.add("TIME\t\t\t\t\tBYTES_RX\t\tBYTES_TX\t\tPACKETS_RX\t\tPACKETS_TX");
-		
+		List<String> statsRecord = new LinkedList<String>();		
 		VTStatsUtils su = new VTStatsUtils();
 
 		if(su.VTGetPortStats(switchId, port, datetime1, datetime2)){
 			for(int i=0; i<su.pStats.counter;i++) {
-				Date date = new Date(su.pStats.timeStamp.get(i));
-				statsRecord.add(date.toString() + "\t\t" + String.format("%010d",su.pStats.rxBytes.get(i)) + "\t\t" + 
-														   String.format("%010d",su.pStats.txBytes.get(i)) + "\t\t" + 
-														   String.format("%010d",su.pStats.rxPackets.get(i)) + "\t\t" + 
-														   String.format("%010d",su.pStats.txPackets.get(i)));
-				
+				statsRecord.add(su.pStats.timeStamp.get(i) + "," + su.pStats.rxBytes.get(i) + "," + 
+								su.pStats.txBytes.get(i) + "," + su.pStats.rxPackets.get(i) + "," + 
+								su.pStats.txPackets.get(i));
 			}
 		}
 		
@@ -978,18 +971,12 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 	public Collection<String> getVTPlannerQueueStats(String switchId, String port, String queue, String datetime1, String datetime2) 
 	throws RuntimeException, ConfigError {
 		List<String> statsRecord = new LinkedList<String>();
-		
-		statsRecord.add("\nSWITCH_ID: " + switchId + " PORT_NUMBER: " + port + " QUEUE_ID: " + queue + "\n");
-		statsRecord.add("TIME\t\t\t\t\tBYTES_TX\t\tPACKETS_TX\t\tERRORS_TX");
-		
 		VTStatsUtils su = new VTStatsUtils();
 
 		if(su.VTGetQueueStats(switchId, port, queue, datetime1, datetime2)){
 			for(int i=0; i<su.qStats.counter;i++) {
-				Date date = new Date(su.qStats.timeStamp.get(i));
-				statsRecord.add(date.toString() + "\t\t" + String.format("%010d",su.qStats.txBytes.get(i)) + "\t\t" + 
-														   String.format("%010d",su.qStats.txPackets.get(i)) + "\t\t" + 
-														   String.format("%010d",su.qStats.txErrors.get(i)));
+				statsRecord.add(su.qStats.timeStamp.get(i) + "," + su.qStats.txBytes.get(i) + "," + 
+								su.qStats.txPackets.get(i) + "," + su.qStats.txErrors.get(i));
 				
 			}
 		}
@@ -1009,15 +996,12 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 	throws RuntimeException, ConfigError {
 		List<String> infoRecord = new LinkedList<String>();
 		
-		infoRecord.add("\nSWITCH_ID: " + switchId + " PORT NUMBER: " + port + "\n");
-		infoRecord.add("PORT\t\tCONFIG\t\tFEATURES\tSTATE");
-		
 		VTStatsUtils su = new VTStatsUtils();
 		if(su.VTGetPortInfo(switchId, port)){
 			for(int i=0; i<su.pInfo.counter;i++) {
-				infoRecord.add(su.pInfo.phyPortId.get(i) + "\t\t" + 
-								"0x" + Integer.toHexString(su.pInfo.portConfig.get(i)) + "\t\t" + 
-								"0x" + Integer.toHexString(su.pInfo.portFeatures.get(i)) + "\t\t" + 
+				infoRecord.add(su.pInfo.phyPortId.get(i) + "," + 
+								"0x" + Integer.toHexString(su.pInfo.portConfig.get(i)) + "," + 
+								"0x" + Integer.toHexString(su.pInfo.portFeatures.get(i)) + "," + 
 								"0x" + Integer.toHexString(su.pInfo.portState.get(i)));
 				
 			}
@@ -1037,34 +1021,17 @@ public class FVUserAPIImpl extends BasicJSONRPCService implements FVUserAPI {
 	@Override
 	public Collection<String> getVTPlannerSwitchInfo(String switchId) 
 	throws RuntimeException, ConfigError {
-		int maxLength = 23; // DPID string length
 		List<String> infoRecord = new LinkedList<String>();
 		
 		VTStatsUtils su = new VTStatsUtils();
 		if(su.VTGetSwitchInfo(switchId)){
-			
 			for(int i=0; i<su.sInfo.counter;i++) {
-				if(su.sInfo.Manufacturer.get(i).length() > maxLength) maxLength = su.sInfo.Manufacturer.get(i).length();
-				if(su.sInfo.serialNumber.get(i).length() > maxLength) maxLength = su.sInfo.serialNumber.get(i).length();
-				if(su.sInfo.datapathDescription.get(i).length() > maxLength) maxLength = su.sInfo.datapathDescription.get(i).length();
-			}
-			maxLength+=2; //additional spaces for the largest column 
-			
-			infoRecord.add("\nDATAPATH_ID" + VTStatsUtils.fillString(' ', maxLength-String.format("DATAPATH_ID").length()) + 
-						   "DPATH_DESCRIPTION" + VTStatsUtils.fillString(' ', maxLength-String.format("DPATH_DESCRIPTION").length()) +
-						   "MANUFACTURER" + VTStatsUtils.fillString(' ', maxLength-String.format("MANUFACTURER").length()) + 
-						   "SERIAL_NUMBER" + VTStatsUtils.fillString(' ', maxLength-String.format("SERIAL_NUMBER").length()) + 
-						   "CAPABILITIES" + VTStatsUtils.fillString(' ', maxLength-String.format("CAPABILITIES").length()) + 
-						   "OF_VERSION" + VTStatsUtils.fillString(' ', maxLength-String.format("OF_VERSION").length()) + 
-						   "PORTS\n");
-			
-			for(int i=0; i<su.sInfo.counter;i++) {
-				infoRecord.add(VTStatsUtils.getStringDPID(su.sInfo.switchId.get(i)) + VTStatsUtils.fillString(' ', maxLength-VTStatsUtils.getStringDPID(su.sInfo.switchId.get(i)).length()) + 
-								su.sInfo.datapathDescription.get(i) + VTStatsUtils.fillString(' ', maxLength-su.sInfo.datapathDescription.get(i).length()) +
-								su.sInfo.Manufacturer.get(i) + VTStatsUtils.fillString(' ', maxLength-su.sInfo.Manufacturer.get(i).length()) + 
-								su.sInfo.serialNumber.get(i) + VTStatsUtils.fillString(' ', maxLength-su.sInfo.serialNumber.get(i).length()) + 
-								Integer.toBinaryString(su.sInfo.capabilities.get(i)) + VTStatsUtils.fillString(' ', maxLength-Integer.toBinaryString(su.sInfo.capabilities.get(i)).length()) + 
-								Integer.toHexString(su.sInfo.ofpVersion.get(i)) + VTStatsUtils.fillString(' ', maxLength-Integer.toHexString(su.sInfo.ofpVersion.get(i)).length()) + 
+				infoRecord.add(VTStatsUtils.getStringDPID(su.sInfo.switchId.get(i)) + ",," + 
+								su.sInfo.datapathDescription.get(i) + ",," +
+								su.sInfo.Manufacturer.get(i) + ",," + 
+								su.sInfo.serialNumber.get(i) + ",," + 
+								Integer.toBinaryString(su.sInfo.capabilities.get(i)) + ",," + 
+								Integer.toHexString(su.sInfo.ofpVersion.get(i)) + ",," + 
 								su.sInfo.available_ports.get(i));
 				
 			}

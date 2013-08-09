@@ -211,24 +211,24 @@ vectl getVTPlannerTimers
 
 Retrieves and prints timer and exp_timer (see command above).
 
-vectl getVTPlannerSwitchInfo <switchid>
+vectl getVTPlannerSwitchInfo <dpid>
 
-Retrieves the switch info. is the switch datapath_id with format
+Retrieves the switch info. dpid is the switch datapath_id with format
 02:08:02:08:00:00:00:01. Value "all" is also allowed (without quotes) and
 returns the info of all the switches in the network. Refer to the OpenFlow
 Specification manual v1.0.0 in order to interpret some of the returned values.
 
-vectl getVTPlannerPortInfo <switchid> <port>
+vectl getVTPlannerPortInfo <dpid> <port_nr>
 
-Retrieves the info of one or all ports of a switch. Available ports and switches
+Prints the info of one or all ports of a switch. Available ports and switches
 can be obtained from the output of command getVTPlannerSwitchInfo described
-above. can be a single port number or the string "all". The meaning of returned
+above. port_nr can be a single port number or the string "all". The meaning of returned
 values CONFIG,FEATURES e STATE can be found at pages 17,18 and 19 of OpenFlow
 Specification v1.0.0.
 
-vectl getVTPlannerPortStats <switchid> <port> <datetime1> <datetime2>
+vectl getVTPlannerPortStats <dpid> <port_nr> <datetime1> <datetime2>
 
-Retrieves the collected stats of one port collected between datetime1 and
+Prints the collected stats of one port collected between datetime1 and
 datetime2. Value of datetime1 and datetime2 must be inserted in the format
 YYYY.MM.DD.hh.mm.ss, for instance:
 

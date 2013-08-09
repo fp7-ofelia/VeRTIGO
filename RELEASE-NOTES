@@ -1,3 +1,7 @@
+VeRTIGO 0.3.7 : 2013-08-05 Mon Roberto Doriguzzi roberto.doriguzzi@create-net.org
+  * Improved XMPRPC interface
+  * Added man pages for vertigo, vectl and veconfig
+
 VeRTIGO 0.3.6 : 2013-06-10 Mon Roberto Doriguzzi roberto.doriguzzi@create-net.org
   * Added support for the MODIFY flowMod command
   * Fixed bug that prevented the correct handling of LLDP packets.

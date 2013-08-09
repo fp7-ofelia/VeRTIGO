@@ -119,7 +119,7 @@ public class FVSlicer implements FVEventHandler, FVSendMsg {
 		this.isVirtual=false;
 		
 		// VERTIGO
-		if(this.sliceName != "fvadmin"){
+		if(this.sliceName != FVConfig.SUPER_USER){
 			vt_config = new VTConfigInterface(sliceName);
 		}
 		//END VERTIGO
@@ -277,9 +277,9 @@ public class FVSlicer implements FVEventHandler, FVSendMsg {
 	public void sendMsg(OFMessage msg, FVSendMsg from) {
 		if (this.msgStream != null) {
 			// VERTIGO
-			if(this.sliceName != "fvadmin" && from.equals(this.fvClassifier)){ // do not process flows that belong to the "fvadmin" slice
+			if(this.sliceName != FVConfig.SUPER_USER && from.equals(this.fvClassifier)){ // do not process flows that belong to the "fvadmin" slice
 				VTPortMapper port_mapper = new VTPortMapper(msg,vt_config);
-				System.out.println("Slicer this.sliceName: " + this.sliceName);	
+					
 				if(port_mapper.UpLinkMapping(this, this.sliceName, (FVClassifier)from) > 0)
 				{
 					FVLog.log(LogLevel.DEBUG, this, "send to controller: ", msg);
@@ -584,7 +584,7 @@ public class FVSlicer implements FVEventHandler, FVSendMsg {
 			for (OFMessage msg : msgs) {
 				FVLog.log(LogLevel.DEBUG, this, "recv from controller: ", msg);
 				// VERTIGO
-				if(this.sliceName != "fvadmin"){
+				if(this.sliceName != FVConfig.SUPER_USER){
 					VTPortMapper port_mapper = new VTPortMapper(msg,vt_config);
 					if(!port_mapper.DownLinkMapping(this, this.sliceName, fvClassifier.getDPID())){
 						FVLog.log(LogLevel.CRIT, this,

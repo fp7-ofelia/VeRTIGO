@@ -163,7 +163,7 @@ public class VTPortMapper {
 				
 			// LLDP packet_in are sent to the controllers "as is"
 			if(LLDPUtil.LLDPCheck(packetIn.getPacketData())) { 
-				VTLog.VTPortMapper("PACKET_IN LLDP switchId: " + switchId);
+				VTLog.VTPortMapper("PACKET_IN LLDP switchId: " + Long.toHexString(switchId));
 				return 1;
 			}
 
