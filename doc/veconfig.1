@@ -1,0 +1,85 @@
+.ds PN veconfig
+
+.TH veconfig 1 "Aug 2013" "VeRTIGO" "VeRTIGO Manual"
+
+.SH NAME
+veconfig \- commandline tool to administer VeRTIGO
+
+.SH AUTHOR
+
+  Roberto Doriguzzi Corin <roberto.doriguzzi@create-net.org>
+  Matteo Gerola <matteo.gerola@create-net.org>
+  Rob Sherwood <rob.sherwood@stanford.edu>
+
+.SH SYNOPSIS
+.B veconfig match config.xml \fIdpid\fR \fImatch\fR
+
+.B veconfig dump config.xml
+
+.B veconfig chpasswd config.xml \fIslicename\fR
+
+.B veconfig query config.xml \fIdpid\fR \fI[slicename]\fR
+
+.B veconfig generateCert \fI[hostname]\fR
+
+.B veconfig generate newconfig.xml \fI[hostname]\fR \fI[admin_passwd]\fR \fI[of_port]\fR \fI[api_port]\fR
+
+.SH DESCRIPTION
+The
+.B veconfig
+program is a command line tool for manipulating the VeRTIGO's configuration
+directly, as opposed to through a running VeRTIGO instance (SEE vectl(1)).
+As such, veconfig relies on standard file permissions instead of VeRTIGO
+user permissions.  Also, veconfig should 
+.B NOT
+be used to modify the configuration of a running VeRTIGO as your changes will be overwritten.  To modify
+the configuration with veconfig, you must kill the VeRTIGO first, and the changes will take effect
+once the VeRTIGO is restarted.
+
+.SH COMMANDS
+
+.TP
+\fBmatch\fR
+    Used for debugging, asks the VeRTIGO to list which rules match the given match 
+    structure.  The format of the match is as described in vectl(1). 
+
+.TP
+\fBdump\fR 
+    Displays the configuration file in a more human-readable form.  Note that
+    the actual configuration file is stored in XML, which is arguably not
+    human readable.
+
+.TP
+\fBchpasswd\fR \fIslicename\fR
+    Changes the password for a slice.  Useful for resetting the admin password
+    if it is forgotten.  This command does modify the configuration, so should
+        not be used on a running VeRTIGO.
+
+.TP
+\fBquery\fR \fIdpid\fR \fI[slicename]\fR
+    Two useful debugging commands.  If the slice name is not specified, this command will
+    list the slices that have the specified DPID in their slice.  If the slice name is 
+    specified, it will list the ports of the DPID that are used by this slice.
+
+.TP
+\fBgenerateCert\fR \fI[hostname]\fR
+    This command generates a new SSL Key store (mySSLKeyStore) with \fIhostname\fR as the
+    SSL common name.  If no hostname is specified, the output from /bin/hostname is used.
+.TP
+\fBgenerate\fR  newconfig.xml \fI[hostname]\fR \fI[admin_passwd]\fR \fI[of_port]\fR \fI[api_port]\fR
+    Generate a new config.  This command also generates a new
+    configuration file, complete with example slices Alice and Bob.
+    veconfig will prompt for a password for the initial admin account
+    if one is not specified on the command-line.  The config listens on
+    port \fIof_port\fR (default: 6633) for OpenFlow switches and port
+    \fIapi_port\fR for the XMLRPC server (default: 8080).  Likely, if
+    this config file is actually to be used, the first thing to do would
+    be to delete the Alice and Bob slices, and then populate it with
+    your own slices.  This command also generates a new SSL Key store
+    (mySSLKeyStore) with hostname as the SSL common name (i.e., same as
+    'generateCert').
+
+.SH "SEE ALSO"
+
+.BR vertigo (8),
+.BR vectl (1)

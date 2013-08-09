@@ -1,0 +1,75 @@
+.ds PN vertigo
+
+.TH vertigo 8 "Aug 2013" "VeRTIGO" "VeRTIGO Manual"
+
+.SH NAME
+VeRTIGO \- OpenFlow network slicing and virtualization daemon
+
+.SH AUTHOR
+
+  Roberto Doriguzzi Corin <roberto.doriguzzi@create-net.org>
+  Matteo Gerola <matteo.gerola@create-net.org>
+  Rob Sherwood <rob.sherwood@stanford.edu>
+
+.SH SYNOPSIS
+.B vertigo
+[-d \fIdebug\fR] [-h] [-l] [-p \fIport\fR] \fIconfig.xml\fR 
+
+.SH DESCRIPTION
+The
+.B vertigo
+program is a daemon that enables the instantiation of generalized virtual topologies in OpenFlow networks including virtual links and virtual ports.
+
+.SH OPTIONS
+
+.TP
+-d \fIdebug\fR
+Overrides debugging threshold in config.xml and sets it to \fIdebug\fR.  Does not modify config.xml.
+Mostly used for manual debugging.  The string \fIdebug\fR must be one of MOBUG, DEBUG, NOTE, INFO, WARN, ALERT, CRIT,
+and FATAL (in order of increasing priority/verbosity) similar to syslog(3).
+
+.TP
+-h
+Prints the version number and usage information and exits.
+
+
+.TP
+-l
+Logs to stderr instead of to syslog()
+
+.TP
+-p \fIport\fR
+Overrides listenning port from config.xml and sets it to \fIport\fR.  Does not modify config.xml.
+Mostly used for manual debugging.
+
+.SH ENVIRONMENT
+
+.TP 
+FV_JVM_ARGS
+
+The override the default arguments to the JVM with those in $FV_JVM_ARGS.
+May be useful for increasing memory efficiency or playing with special
+JVM optimizations, like fancy garbage collectors.
+
+.TP
+FV_DEBUG_PORT
+
+Turns on remote debugging support for the JVM and sets the JVM to
+listen on port $FV_DEBUG_PORT.  This is useful for attaching a
+remote debugger, e.g., `jdb -attach fvserver.foo.com:$FV_DEBUG_PORT`.
+\fINOTE\fR: there is no security in the JVM debugging protocol, so
+by enabling this option you potentially open your running VeRTIGO
+to remote control/manipulation.  FV_DEBUG_PORT is specified as
+\fI[local_address:]port\fR, where \fIlocal_address\fR defaults to "all
+interfaces", so if you are interested in binding to a specific
+interface, e.g., the loopback interface on port 12345, can set
+FV_DEBUG_PORT=localhost:12345 .  See
+\fIhttp://download.oracle.com/javase/6/docs/technotes/guides/jpda/conninv.html#Invocation\fR
+for more information.
+
+
+
+.SH "SEE ALSO"
+
+.BR vectl (1)
+.BR veconfig (1)
