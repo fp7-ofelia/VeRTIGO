@@ -38,7 +38,7 @@ public class VeRTIGO {
 
 		// VERSION
 		public final static String FLOWVISOR_VERSION = "flowvisor-0.8.1";
-		public final static String VERTIGO_VERSION = "vertigo-0.3.7";
+		public final static String VERTIGO_VERSION = "vertigo-0.3.8";
 
 		// Max slicename len ; used in LLDP for now; needs to be 1 byte
 		public final static int MAX_SLICENAME_LEN = 255;

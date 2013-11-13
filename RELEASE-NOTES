@@ -1,3 +1,8 @@
+VeRTIGO 0.3.8 : 2013-11-13 Wed Roberto Doriguzzi roberto.doriguzzi@create-net.org
+  * Fixed bug that prevented the correct handling of FLOW_STATS replies 
+  * Password for vectl can now be passeds from the standard input (credits to Johannes Grassler)
+  * Improved installation instructions for Debian Wheezy/amd64 boxes (credits to Johannes Grassler)
+
 VeRTIGO 0.3.7 : 2013-08-05 Mon Roberto Doriguzzi roberto.doriguzzi@create-net.org
   * Improved XMPRPC interface
   * Added man pages for vertigo, vectl and veconfig

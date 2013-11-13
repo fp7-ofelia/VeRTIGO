@@ -238,17 +238,7 @@ public class VTPortMapper {
 			// getting the port mapping
 			HashMap<Integer,LinkedList<Integer>> phyToVirtPortMap = vt_config.GetPhyToVirtMap(sliceName, switchId);
 			
-			if (statsType == OFStatisticsType.FLOW.getTypeValue()) { //match field contains the in_port
-				List<OFStatistics> inStatsList = statsRep.getStatistics();
-				
-				for (OFStatistics ofStats : inStatsList) {
-					FVFlowStatisticsReply flowStats = (FVFlowStatisticsReply) ofStats;
-					OFMatch match = flowStats.getMatch();
-					LinkedList<Integer> virtPortList = phyToVirtPortMap.get((int)match.getInputPort());
-					match.setInputPort((short)virtPortList.getFirst().shortValue());
-				}
-				
-			} else if (statsType == OFStatisticsType.PORT.getTypeValue()) { //all physical ports must be remapped to virtual ports
+			if (statsType == OFStatisticsType.PORT.getTypeValue()) { //all physical ports must be remapped to virtual ports
 				List<OFStatistics> inStatsList = statsRep.getStatistics();
 				List<OFStatistics> outStatsList = new LinkedList<OFStatistics>();
 				

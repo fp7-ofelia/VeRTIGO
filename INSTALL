@@ -12,10 +12,18 @@ BUILD:
     many linux systems, the following seems to be the right invocation:
 	make CFLAGS="-I/usr/lib/jvm/java-6-openjdk/include"
 
-INSTALL:
-    - make install
+    For Debian Wheezy on an amd64 system the following should work:
 
-    This puts scripts and jars into a specified $prefix
+      # aptitude install ant openjdk-6-jdk openjdk-6-source                 # Install build prerequisites
+      # CFLAGS="-I/usr/lib/jvm/java-6-openjdk-amd64/include" make           # build
+
+INSTALL:
+
+      # make install                                                        # If you have no problems finding jni.h
+      # CFLAGS="-I/usr/lib/jvm/java-6-openjdk/include" make install         # Fixes jni.h issue on many Linux systems
+      # CFLAGS="-I/usr/lib/jvm/java-6-openjdk-amd64/include" make install   # Fixes jni.h issue on Debian Wheezy/amd64
+
+    This puts scripts and jars into a specified $prefix.
     
 
 CONFIG:
